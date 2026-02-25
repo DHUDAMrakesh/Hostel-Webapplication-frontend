@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import api from '../../utils/api';
 
 const ForgotPasswordHelper = ({ isOpen, onClose }) => {
     const [step, setStep] = useState(1); // 1: Email/Phone, 2: OTP, 3: New Password
@@ -7,39 +8,67 @@ const ForgotPasswordHelper = ({ isOpen, onClose }) => {
     const [otp, setOtp] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
+
+    const handleClose = () => {
+        setStep(1);
+        setIdentifier('');
+        setOtp('');
+        setNewPassword('');
+        setError('');
+        setSuccess('');
+        onClose();
+    };
 
     if (!isOpen) return null;
 
-    const handleSendOtp = (e) => {
+    const handleSendOtp = async (e) => {
         e.preventDefault();
         setIsLoading(true);
-        setTimeout(() => {
-            setIsLoading(false);
+        setError('');
+        setSuccess('');
+        try {
+            const res = await api.post('/auth/forgot-password', { email: identifier });
+            setSuccess(res.data.message);
             setStep(2);
-        }, 1500);
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to send OTP.');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    const handleVerifyOtp = (e) => {
+    const handleVerifyOtp = async (e) => {
         e.preventDefault();
         setIsLoading(true);
-        setTimeout(() => {
-            setIsLoading(false);
+        setError('');
+        try {
+            await api.post('/auth/verify-otp', { email: identifier, otp });
             setStep(3);
-        }, 1500);
+            setError('');
+        } catch (err) {
+            setError(err.response?.data?.message || 'Invalid or expired OTP.');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    const handleResetPassword = (e) => {
+    const handleResetPassword = async (e) => {
         e.preventDefault();
         setIsLoading(true);
-        setTimeout(() => {
+        setError('');
+        try {
+            await api.post('/auth/reset-password', { email: identifier, otp, newPassword });
+            setSuccess('Password reset successfully!');
+            setTimeout(() => {
+                handleClose();
+            }, 2000);
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to reset password.');
+        } finally {
             setIsLoading(false);
-            onClose();
-            setStep(1);
-            setIdentifier('');
-            setOtp('');
-            setNewPassword('');
-            alert('Password reset successfully!');
-        }, 1500);
+        }
     };
 
     return (
@@ -49,7 +78,7 @@ const ForgotPasswordHelper = ({ isOpen, onClose }) => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-                onClick={onClose}
+                onClick={handleClose}
             />
 
             <motion.div
@@ -65,7 +94,7 @@ const ForgotPasswordHelper = ({ isOpen, onClose }) => {
                         {step === 3 && "New Password"}
                     </h3>
                     <p className="text-gray-400 text-sm mt-2">
-                        {step === 1 && "Enter your email or mobile number to receive an OTP."}
+                        {step === 1 && "Enter your email to receive an OTP."}
                         {step === 2 && `Code sent to ${identifier}`}
                         {step === 3 && "Create a strong password for your account."}
                     </p>
@@ -75,10 +104,10 @@ const ForgotPasswordHelper = ({ isOpen, onClose }) => {
                     {step === 1 && (
                         <div className="space-y-4">
                             <input
-                                type="text"
+                                type="email"
                                 value={identifier}
                                 onChange={(e) => setIdentifier(e.target.value)}
-                                placeholder="Email or Mobile Number"
+                                placeholder="Email Address"
                                 className="w-full px-5 py-3.5 rounded-xl bg-[#1e1e1e] border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-brand-indigo focus:ring-1 focus:ring-brand-indigo transition-all"
                                 required
                             />
@@ -97,7 +126,7 @@ const ForgotPasswordHelper = ({ isOpen, onClose }) => {
                                 required
                             />
                             <button type="button" onClick={() => setStep(1)} className="text-xs text-brand-indigo hover:underline w-full text-center">
-                                Change Email/Number
+                                Change Email
                             </button>
                         </div>
                     )}
@@ -115,6 +144,18 @@ const ForgotPasswordHelper = ({ isOpen, onClose }) => {
                         </div>
                     )}
 
+                    {error && (
+                        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-red-400 text-xs mt-4 text-center">
+                            {error}
+                        </motion.p>
+                    )}
+
+                    {success && (
+                        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-emerald-400 text-xs mt-4 text-center">
+                            {success}
+                        </motion.p>
+                    )}
+
                     <button
                         type="submit"
                         disabled={isLoading}
@@ -128,7 +169,7 @@ const ForgotPasswordHelper = ({ isOpen, onClose }) => {
                     </button>
                 </form>
 
-                <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-white">
+                <button onClick={handleClose} className="absolute top-4 right-4 text-gray-500 hover:text-white">
                     ✕
                 </button>
             </motion.div>

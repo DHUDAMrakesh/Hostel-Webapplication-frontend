@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../utils/api';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useLanguage } from '../context/LanguageContext';
 
 const API = '';
 
@@ -42,13 +43,13 @@ function StudentModal({ editData, onClose, onSaved }) {
 
     const inp = {
         width: '100%', padding: '10px 13px', borderRadius: 9,
-        border: '1px solid rgba(0,0,0,0.12)', background: '#fff',
-        fontSize: 14, color: '#0f172a', fontFamily: 'Outfit, sans-serif',
+        border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)',
+        fontSize: 14, color: 'var(--text-primary)', fontFamily: 'Outfit, sans-serif',
         outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.2s, box-shadow 0.2s',
     };
-    const lbl = { fontSize: 12, fontWeight: 600, color: '#334155', display: 'block', marginBottom: 5 };
-    const focusInp = e => { e.target.style.borderColor = 'rgba(79,70,229,0.55)'; e.target.style.boxShadow = '0 0 0 3px rgba(79,70,229,0.08)'; };
-    const blurInp = e => { e.target.style.borderColor = 'rgba(0,0,0,0.12)'; e.target.style.boxShadow = 'none'; };
+    const lbl = { fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 5 };
+    const focusInp = e => { e.target.style.borderColor = 'var(--accent-muted)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-glow)'; };
+    const blurInp = e => { e.target.style.borderColor = 'var(--border-subtle)'; e.target.style.boxShadow = 'none'; };
 
     return (
         <div
@@ -60,15 +61,15 @@ function StudentModal({ editData, onClose, onSaved }) {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.94 }}
                 transition={{ duration: 0.2 }}
-                style={{ background: '#f8faff', borderRadius: 20, width: '100%', maxWidth: 520, boxShadow: '0 24px 80px rgba(0,0,0,0.18)', overflow: 'hidden' }}
+                style={{ background: 'var(--bg-base)', borderRadius: 20, width: '100%', maxWidth: 520, boxShadow: '0 24px 80px rgba(0,0,0,0.18)', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}
             >
                 {/* Header */}
-                <div style={{ padding: '20px 26px 18px', borderBottom: '1px solid rgba(0,0,0,0.08)', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ padding: '20px 26px 18px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{isEdit ? 'Edit Student' : 'New Student'}</div>
-                        <div style={{ fontSize: 19, fontWeight: 700, color: '#0f172a', marginTop: 2 }}>{isEdit ? `Editing — ${editData.name}` : 'Add Student'}</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{isEdit ? 'Edit Student' : 'New Student'}</div>
+                        <div style={{ fontSize: 19, fontWeight: 700, color: 'var(--text-primary)', marginTop: 2 }}>{isEdit ? `Editing — ${editData.name}` : 'Add Student'}</div>
                     </div>
-                    <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.07)', color: '#334155', fontSize: 16, cursor: 'pointer' }}>✕</button>
+                    <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: 16, cursor: 'pointer' }}>✕</button>
                 </div>
 
                 {/* Body */}
@@ -78,8 +79,8 @@ function StudentModal({ editData, onClose, onSaved }) {
                         <div style={{ width: 56, height: 56, borderRadius: 16, background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 700, color: '#fff', boxShadow: '0 4px 16px rgba(79,70,229,0.3)', flexShrink: 0 }}>
                             {form.name ? form.name.charAt(0).toUpperCase() : '?'}
                         </div>
-                        <div style={{ fontSize: 13, color: '#64748b' }}>
-                            {form.name || 'Student name'}<br />
+                        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                            <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14 }}>{form.name || 'Student name'}</span><br />
                             <span style={{ fontSize: 12 }}>{form.email || 'email@example.com'}</span>
                         </div>
                     </div>
@@ -132,8 +133,8 @@ function StudentModal({ editData, onClose, onSaved }) {
                 </div>
 
                 {/* Footer */}
-                <div style={{ padding: '14px 26px', borderTop: '1px solid rgba(0,0,0,0.08)', background: '#fff', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-                    <button onClick={onClose} style={{ padding: '10px 22px', borderRadius: 10, border: '1px solid rgba(0,0,0,0.12)', background: '#fff', color: '#334155', fontSize: 14, fontWeight: 600, fontFamily: 'Outfit, sans-serif', cursor: 'pointer' }}>
+                <div style={{ padding: '14px 26px', borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                    <button onClick={onClose} style={{ padding: '10px 22px', borderRadius: 10, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: 14, fontWeight: 600, fontFamily: 'Outfit, sans-serif', cursor: 'pointer' }}>
                         Cancel
                     </button>
                     <button onClick={handleSave} disabled={saving} style={{ padding: '10px 24px', borderRadius: 10, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', fontSize: 14, fontWeight: 600, fontFamily: 'Outfit, sans-serif', opacity: saving ? 0.7 : 1, boxShadow: '0 4px 16px rgba(79,70,229,0.3)' }}>
@@ -172,8 +173,8 @@ function StudentCard({ student, onEdit, onDelete, delay }) {
                         {student.name.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                        <div style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>{student.name}</div>
-                        <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>Room {student.roomNumber}</div>
+                        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>{student.name}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>Room {student.roomNumber}</div>
                     </div>
                 </div>
 
@@ -196,31 +197,31 @@ function StudentCard({ student, onEdit, onDelete, delay }) {
             {/* Info grid */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
                 {student.email && (
-                    <div style={{ gridColumn: '1/-1', fontSize: 12, color: '#64748b', display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <div style={{ gridColumn: '1/-1', fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5 }}>
                         <span>✉</span> {student.email}
                     </div>
                 )}
                 {student.phone && (
-                    <div style={{ gridColumn: '1/-1', fontSize: 12, color: '#64748b', display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <div style={{ gridColumn: '1/-1', fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5 }}>
                         <span>📞</span> {student.phone}
                     </div>
                 )}
-                <div style={{ fontSize: 12, color: '#64748b' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                     📅 Joined {new Date(student.joinedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </div>
-                <div style={{ fontSize: 12, color: '#64748b', textAlign: 'right' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'right' }}>
                     {student.payments?.length || 0} payment{student.payments?.length !== 1 ? 's' : ''}
                 </div>
             </div>
 
             {/* Fee strip */}
             <div style={{ display: 'flex', gap: 8 }}>
-                <div style={{ flex: 1, padding: '10px 12px', borderRadius: 10, background: '#f0f4ff', border: '1px solid rgba(79,70,229,0.12)', textAlign: 'center' }}>
-                    <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3 }}>Monthly Fee</div>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: '#4f46e5' }}>₹{(student.monthlyFee || 5000).toLocaleString('en-IN')}</div>
+                <div style={{ flex: 1, padding: '10px 12px', borderRadius: 10, background: 'var(--accent-glow)', border: '1px solid var(--accent-muted)', textAlign: 'center' }}>
+                    <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3 }}>Monthly Fee</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--accent)' }}>₹{(student.monthlyFee || 5000).toLocaleString('en-IN')}</div>
                 </div>
-                <div style={{ flex: 1, padding: '10px 12px', borderRadius: 10, background: student.feeDues > 0 ? 'rgba(225,29,72,0.06)' : 'rgba(5,150,105,0.06)', border: `1px solid ${student.feeDues > 0 ? 'rgba(225,29,72,0.18)' : 'rgba(5,150,105,0.18)'}`, textAlign: 'center' }}>
-                    <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3 }}>{student.feeDues > 0 ? 'Dues' : 'Status'}</div>
+                <div style={{ flex: 1, padding: '10px 12px', borderRadius: 10, background: student.feeDues > 0 ? 'rgba(225,29,72,0.08)' : 'rgba(5,150,105,0.08)', border: `1px solid ${student.feeDues > 0 ? 'rgba(225,29,72,0.18)' : 'rgba(5,150,105,0.18)'}`, textAlign: 'center' }}>
+                    <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3 }}>{student.feeDues > 0 ? 'Dues' : 'Status'}</div>
                     <div style={{ fontSize: 15, fontWeight: 700, color: dueColor }}>
                         {student.feeDues > 0 ? `₹${student.feeDues.toLocaleString('en-IN')}` : '✓ Clear'}
                     </div>
@@ -232,6 +233,7 @@ function StudentCard({ student, onEdit, onDelete, delay }) {
 
 /* ─── Main Component ─── */
 export default function Students() {
+    const { t } = useLanguage();
     const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [modal, setModal] = useState(null); // null | 'add' | { ...editData }
@@ -323,7 +325,7 @@ export default function Students() {
                     <div key={stat.label} className="card" style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
                         <div style={{ width: 42, height: 42, borderRadius: 11, background: `${stat.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, flexShrink: 0 }}>{stat.icon}</div>
                         <div>
-                            <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{stat.label}</div>
+                            <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{stat.label}</div>
                             <div style={{ fontSize: 20, fontWeight: 700, color: stat.color }}>{stat.value}</div>
                         </div>
                     </div>
@@ -338,14 +340,14 @@ export default function Students() {
                     placeholder="🔍  Search by name, room or email…"
                     value={search}
                     onChange={e => setSearch(e.target.value)}
-                    style={{ flex: 1, minWidth: 200, padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(0,0,0,0.12)', background: '#fff', fontSize: 13, color: '#0f172a', fontFamily: 'Outfit, sans-serif', outline: 'none' }}
+                    style={{ flex: 1, minWidth: 200, padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', fontSize: 13, color: 'var(--text-primary)', fontFamily: 'Outfit, sans-serif', outline: 'none' }}
                 />
 
                 {/* Status filter */}
                 <div style={{ display: 'flex', gap: 6 }}>
                     {['All', 'Dues', 'Clear'].map(f => (
                         <button key={f} onClick={() => setFilterStatus(f)}
-                            style={{ padding: '9px 16px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit, sans-serif', background: filterStatus === f ? '#4f46e5' : 'rgba(0,0,0,0.06)', color: filterStatus === f ? '#fff' : '#334155', transition: 'all 0.2s' }}
+                            style={{ padding: '9px 16px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit, sans-serif', background: filterStatus === f ? 'var(--accent)' : 'var(--bg-elevated)', color: filterStatus === f ? '#fff' : 'var(--text-secondary)', transition: 'all 0.2s' }}
                         >{f === 'Dues' ? '⚠ Dues' : f === 'Clear' ? '✓ Clear' : f}</button>
                     ))}
                 </div>
@@ -354,7 +356,7 @@ export default function Students() {
                 <select
                     value={sortBy}
                     onChange={e => setSortBy(e.target.value)}
-                    style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid rgba(0,0,0,0.12)', background: '#fff', fontSize: 13, color: '#0f172a', fontFamily: 'Outfit, sans-serif', outline: 'none', cursor: 'pointer' }}
+                    style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', fontSize: 13, color: 'var(--text-primary)', fontFamily: 'Outfit, sans-serif', outline: 'none', cursor: 'pointer' }}
                 >
                     <option value="name">Sort: Name</option>
                     <option value="room">Sort: Room</option>
@@ -363,34 +365,36 @@ export default function Students() {
             </div>
 
             {/* Count */}
-            <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 16 }}>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>
                 Showing {filtered.length} of {students.length} student{students.length !== 1 ? 's' : ''}
             </div>
 
             {/* Grid */}
-            {filtered.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '60px 0', color: '#94a3b8' }}>
-                    <div style={{ fontSize: 48, marginBottom: 14 }}>🎓</div>
-                    <div style={{ fontSize: 18, fontWeight: 600, color: '#334155', marginBottom: 6 }}>No students found</div>
-                    <div style={{ fontSize: 14 }}>
-                        {students.length === 0
-                            ? 'Click "+ Add Student" to enrol the first student.'
-                            : 'Try a different search or filter.'}
+            {
+                filtered.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-muted)' }}>
+                        <div style={{ fontSize: 48, marginBottom: 14 }}>🎓</div>
+                        <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>No students found</div>
+                        <div style={{ fontSize: 13 }}>
+                            {students.length === 0
+                                ? 'Click "+ Add Student" to enrol the first student.'
+                                : 'Try a different search or filter.'}
+                        </div>
                     </div>
-                </div>
-            ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
-                    {filtered.map((s, i) => (
-                        <StudentCard
-                            key={s._id}
-                            student={s}
-                            delay={i * 0.05}
-                            onEdit={student => setModal(student)}
-                            onDelete={handleDelete}
-                        />
-                    ))}
-                </div>
-            )}
+                ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+                        {filtered.map((s, i) => (
+                            <StudentCard
+                                key={s._id}
+                                student={s}
+                                delay={i * 0.05}
+                                onEdit={student => setModal(student)}
+                                onDelete={handleDelete}
+                            />
+                        ))}
+                    </div>
+                )
+            }
 
             {/* Modal */}
             <AnimatePresence>
@@ -424,6 +428,6 @@ export default function Students() {
                     </motion.div>
                 )}
             </AnimatePresence>
-        </div>
+        </div >
     );
 }

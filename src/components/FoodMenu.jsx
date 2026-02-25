@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import api from '../utils/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 
 const API = '';
 
@@ -61,8 +62,8 @@ function ImagePicker({ label, icon, accentColor, imgKey, form, setForm }) {
             onClick={() => setTab(t)}
             style={{
                 padding: '5px 14px', borderRadius: 7, border: 'none', cursor: 'pointer',
-                background: tab === t ? accentColor : 'rgba(0,0,0,0.06)',
-                color: tab === t ? '#fff' : '#334155',
+                background: tab === t ? accentColor : 'var(--bg-elevated)',
+                color: tab === t ? '#fff' : 'var(--text-secondary)',
                 fontSize: 12, fontWeight: 600, fontFamily: 'Outfit, sans-serif',
                 transition: 'all 0.2s',
             }}
@@ -107,8 +108,8 @@ function ImagePicker({ label, icon, accentColor, imgKey, form, setForm }) {
                     onChange={e => setForm(prev => ({ ...prev, [imgKey]: e.target.value }))}
                     style={{
                         width: '100%', padding: '8px 12px', borderRadius: 8,
-                        border: '1px solid rgba(0,0,0,0.13)', background: '#fff',
-                        fontSize: 13, color: '#0f172a', fontFamily: 'Outfit, sans-serif', outline: 'none',
+                        border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)',
+                        fontSize: 13, color: 'var(--text-primary)', fontFamily: 'Outfit, sans-serif', outline: 'none',
                     }}
                 />
             ) : (
@@ -162,8 +163,8 @@ function DayModal({ editData, existingDays, onClose, onSave }) {
 
     const fieldStyle = {
         width: '100%', padding: '9px 12px', borderRadius: 8,
-        border: '1px solid rgba(0,0,0,0.13)', background: '#fff',
-        fontSize: 13, color: '#0f172a', fontFamily: 'Outfit, sans-serif', outline: 'none',
+        border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)',
+        fontSize: 13, color: 'var(--text-primary)', fontFamily: 'Outfit, sans-serif', outline: 'none',
         resize: 'vertical', minHeight: 58, boxSizing: 'border-box',
     };
 
@@ -181,22 +182,23 @@ function DayModal({ editData, existingDays, onClose, onSave }) {
                 exit={{ opacity: 0, scale: 0.94, y: 20 }}
                 transition={{ duration: 0.22 }}
                 style={{
-                    background: '#f8faff', borderRadius: 18, width: '100%', maxWidth: 680,
+                    background: 'var(--bg-base)', borderRadius: 18, width: '100%', maxWidth: 680,
                     maxHeight: '90vh', display: 'flex', flexDirection: 'column',
                     boxShadow: '0 24px 80px rgba(0,0,0,0.18)', overflow: 'hidden',
+                    border: '1px solid var(--border-subtle)',
                 }}
             >
                 {/* Header */}
                 <div style={{
-                    padding: '20px 28px 18px', borderBottom: '1px solid rgba(0,0,0,0.08)',
+                    padding: '20px 28px 18px', borderBottom: '1px solid var(--border-subtle)',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    background: '#fff',
+                    background: 'var(--bg-surface)',
                 }}>
                     <div>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                             {isEdit ? 'Edit Day' : 'Add New Day'}
                         </div>
-                        <div style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', marginTop: 2 }}>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginTop: 2 }}>
                             {isEdit ? `Editing — ${editData.day}` : 'Add Day to Menu'}
                         </div>
                     </div>
@@ -204,7 +206,7 @@ function DayModal({ editData, existingDays, onClose, onSave }) {
                         onClick={onClose}
                         style={{
                             width: 32, height: 32, borderRadius: '50%', border: 'none',
-                            background: 'rgba(0,0,0,0.07)', color: '#334155',
+                            background: 'var(--bg-elevated)', color: 'var(--text-primary)',
                             fontSize: 16, cursor: 'pointer', lineHeight: 1,
                         }}
                     >✕</button>
@@ -215,7 +217,7 @@ function DayModal({ editData, existingDays, onClose, onSave }) {
                     {/* Day selector */}
                     {!isEdit && (
                         <div style={{ marginBottom: 24 }}>
-                            <label style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', display: 'block', marginBottom: 7 }}>Day of the Week</label>
+                            <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', display: 'block', marginBottom: 7 }}>Day of the Week</label>
                             <select
                                 value={form.day}
                                 onChange={e => setForm(p => ({ ...p, day: e.target.value }))}
@@ -232,14 +234,14 @@ function DayModal({ editData, existingDays, onClose, onSave }) {
                     {mealMeta.map(m => (
                         <div key={m.key} style={{
                             marginBottom: 28, padding: 18, borderRadius: 14,
-                            background: '#fff', border: `1px solid ${m.accentBorder}`,
+                            background: 'var(--bg-surface)', border: `1px solid ${m.accentBorder}`,
                         }}>
                             <div style={{ fontSize: 14, fontWeight: 700, color: m.accentColor, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 7 }}>
                                 <span>{m.icon}</span> {m.label}
-                                <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 400 }}>· {m.time}</span>
+                                <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>· {m.time}</span>
                             </div>
 
-                            <label style={{ fontSize: 12, fontWeight: 600, color: '#334155', display: 'block', marginBottom: 5 }}>Menu Description</label>
+                            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 5 }}>Menu Description</label>
                             <textarea
                                 value={form[m.key]}
                                 onChange={e => setForm(p => ({ ...p, [m.key]: e.target.value }))}
@@ -267,14 +269,14 @@ function DayModal({ editData, existingDays, onClose, onSave }) {
 
                 {/* Footer */}
                 <div style={{
-                    padding: '16px 28px', borderTop: '1px solid rgba(0,0,0,0.08)',
-                    display: 'flex', justifyContent: 'flex-end', gap: 10, background: '#fff',
+                    padding: '16px 28px', borderTop: '1px solid var(--border-subtle)',
+                    display: 'flex', justifyContent: 'flex-end', gap: 10, background: 'var(--bg-surface)',
                 }}>
                     <button
                         onClick={onClose}
                         style={{
-                            padding: '10px 22px', borderRadius: 10, border: '1px solid rgba(0,0,0,0.12)',
-                            background: '#fff', color: '#334155', fontSize: 14, fontWeight: 600,
+                            padding: '10px 22px', borderRadius: 10, border: '1px solid var(--border-subtle)',
+                            background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: 14, fontWeight: 600,
                             fontFamily: 'Outfit, sans-serif', cursor: 'pointer',
                         }}
                     >Cancel</button>
@@ -298,6 +300,7 @@ function DayModal({ editData, existingDays, onClose, onSave }) {
 /* ─── Main Component ─── */
 export default function FoodMenu() {
     const { user } = useAuth();
+    const { t } = useLanguage();
     const isStudent = user?.role === 'student';
     const [menu, setMenu] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -391,8 +394,8 @@ export default function FoodMenu() {
                     justifyContent: 'center', height: 280, gap: 14,
                 }}>
                     <div style={{ fontSize: 48 }}>🍽️</div>
-                    <div style={{ fontSize: 18, fontWeight: 600, color: '#334155' }}>No menu yet</div>
-                    <div style={{ fontSize: 14, color: '#64748b' }}>Click <strong>+ Add Day</strong> to create the first entry.</div>
+                    <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)' }}>No menu yet</div>
+                    <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>Click <strong>+ Add Day</strong> to create the first entry.</div>
                 </div>
             ) : (
                 <div className="menu-layout">

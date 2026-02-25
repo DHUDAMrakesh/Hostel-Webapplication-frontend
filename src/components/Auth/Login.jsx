@@ -5,8 +5,10 @@ import { useSettings } from '../../context/SettingsContext';
 import GoogleAccountModal from './GoogleAccountModal';
 import ForgotPasswordHelper from './ForgotPasswordHelper';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 const Login = ({ onLogin, onSwitchToSignup }) => {
+    const { t } = useLanguage();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -16,15 +18,38 @@ const Login = ({ onLogin, onSwitchToSignup }) => {
     const { settings } = useSettings();
     const auth = useAuth();
 
+    const [mfaEmail, setMfaEmail] = useState('');
+    const [otp, setOtp] = useState('');
+    const [isMfaStep, setIsMfaStep] = useState(false);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
         setIsLoading(true);
         try {
-            const user = await auth.login(email, password);
-            onLogin(user);
+            const result = await auth.login(email, password);
+            if (result.mfaRequired) {
+                setMfaEmail(result.email);
+                setIsMfaStep(true);
+            } else {
+                onLogin(result.user);
+            }
         } catch (err) {
             setError(err.message || 'Invalid email or password.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleVerify2FA = async (e) => {
+        e.preventDefault();
+        setError('');
+        setIsLoading(true);
+        try {
+            const user = await auth.verify2FA(mfaEmail, otp);
+            onLogin(user);
+        } catch (err) {
+            setError(err.message || 'Verification failed.');
         } finally {
             setIsLoading(false);
         }
@@ -46,67 +71,118 @@ const Login = ({ onLogin, onSwitchToSignup }) => {
     return (
         <>
             <AuthLayout
-                title="Welcome to HostelOS"
-                subtitle="Find new ideas for your hostel management."
+                title={isMfaStep ? "Verify it's you" : "Welcome to HostelOS"}
+                subtitle={isMfaStep ? `A code was sent to ${mfaEmail}` : "Find new ideas for your hostel management."}
             >
-                <form onSubmit={handleSubmit} className="w-full">
-                    <div style={{ marginBottom: '15px' }}>
-                        <input
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            placeholder="Email address"
-                            className="w-full px-5 py-3.5 rounded-full bg-[#303030] border border-transparent text-white placeholder-gray-500 focus:outline-none focus:border-white/20 focus:bg-transparent focus:ring-2 focus:ring-white/10 transition-all font-medium text-[15px]"
-                            required
-                        />
-                    </div>
+                {!isMfaStep ? (
+                    <form onSubmit={handleSubmit} className="w-full">
+                        <div style={{ marginBottom: '15px' }}>
+                            <input
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                placeholder="Email address"
+                                className="w-full px-5 py-3.5 rounded-full bg-[#303030] border border-transparent text-white placeholder-gray-500 focus:outline-none focus:border-white/20 focus:bg-transparent focus:ring-2 focus:ring-white/10 transition-all font-medium text-[15px]"
+                                required
+                            />
+                        </div>
 
-                    <div style={{ marginBottom: '15px' }}>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="Password"
-                            className="w-full px-5 py-3.5 rounded-full bg-[#303030] border border-transparent text-white placeholder-gray-500 focus:outline-none focus:border-white/20 focus:bg-transparent focus:ring-2 focus:ring-white/10 transition-all font-medium text-[15px]"
-                            required
-                        />
-                    </div>
+                        <div style={{ marginBottom: '15px' }}>
+                            <input
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                placeholder="Password"
+                                className="w-full px-5 py-3.5 rounded-full bg-[#303030] border border-transparent text-white placeholder-gray-500 focus:outline-none focus:border-white/20 focus:bg-transparent focus:ring-2 focus:ring-white/10 transition-all font-medium text-[15px]"
+                                required
+                            />
+                        </div>
 
-                    {/* Error message */}
-                    {error && (
-                        <motion.div
-                            initial={{ opacity: 0, y: -4 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="mb-3 px-4 py-2.5 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 text-sm font-medium"
-                        >
-                            {error}
-                        </motion.div>
-                    )}
-
-                    <div className="text-right mb-4">
-                        <button
-                            type="button"
-                            onClick={() => setShowForgotPassword(true)}
-                            className="text-sm font-semibold text-white/50 hover:text-white transition-colors"
-                        >
-                            Forgot your password?
-                        </button>
-                    </div>
-
-                    <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        type="submit"
-                        disabled={isLoading}
-                        className="w-full py-3.5 bg-[#E60023] hover:bg-[#ad081b] text-white font-bold rounded-full shadow-lg flex items-center justify-center gap-2 transition-all"
-                    >
-                        {isLoading ? (
-                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        ) : (
-                            "Log in"
+                        {/* Error message */}
+                        {error && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -4 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="mb-3 px-4 py-2.5 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 text-sm font-medium"
+                            >
+                                {error}
+                            </motion.div>
                         )}
-                    </motion.button>
-                </form>
+
+                        <div className="text-right mb-4">
+                            <button
+                                type="button"
+                                onClick={() => setShowForgotPassword(true)}
+                                className="text-sm font-semibold text-white/50 hover:text-white transition-colors"
+                            >
+                                Forgot your password?
+                            </button>
+                        </div>
+
+                        <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            type="submit"
+                            disabled={isLoading}
+                            className="w-full py-3.5 bg-[#E60023] hover:bg-[#ad081b] text-white font-bold rounded-full shadow-lg flex items-center justify-center gap-2 transition-all"
+                        >
+                            {isLoading ? (
+                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            ) : (
+                                "Log in"
+                            )}
+                        </motion.button>
+                    </form>
+                ) : (
+                    <form onSubmit={handleVerify2FA} className="w-full">
+                        <div style={{ marginBottom: '20px' }}>
+                            <input
+                                type="text"
+                                value={otp}
+                                onChange={(e) => setOtp(e.target.value)}
+                                placeholder="6-digit verification code"
+                                className="w-full px-5 py-3.5 rounded-full bg-[#303030] border border-transparent text-white placeholder-gray-500 focus:outline-none focus:border-white/20 focus:bg-transparent focus:ring-2 focus:ring-white/10 transition-all font-medium text-[15px] text-center tracking-[0.5em] text-lg"
+                                maxLength={6}
+                                required
+                            />
+                        </div>
+
+                        {/* Error message */}
+                        {error && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -4 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="mb-3 px-4 py-2.5 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 text-sm font-medium"
+                            >
+                                {error}
+                            </motion.div>
+                        )}
+
+                        <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            type="submit"
+                            disabled={isLoading}
+                            className="w-full py-3.5 bg-brand-indigo hover:bg-brand-indigo/90 text-white font-bold rounded-full shadow-lg flex items-center justify-center gap-2 transition-all"
+                        >
+                            {isLoading ? (
+                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            ) : (
+                                "Verify"
+                            )}
+                        </motion.button>
+
+                        <div className="text-center mt-4">
+                            <button
+                                type="button"
+                                onClick={() => setIsMfaStep(false)}
+                                className="text-sm font-semibold text-white/50 hover:text-white transition-colors"
+                            >
+                                Back to login
+                            </button>
+                        </div>
+                    </form>
+                )}
 
                 <div className="relative my-6">
                     <div className="absolute inset-0 flex items-center">

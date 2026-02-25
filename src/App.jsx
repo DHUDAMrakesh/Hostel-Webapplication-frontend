@@ -47,11 +47,11 @@ const rolePath = (role, page) => `/${role}/${page}`;
 
 // ─── Layout ──────────────────────────────────────────────────────────────────
 const Layout = ({ settings, collapsed, setCollapsed, handleLogout, user }) => {
+  const { updateSettings } = useSettings();
   const navigate = useNavigate();
   const location = useLocation();
   const role = user?.role || 'student';
   const [profileOpen, setProfileOpen] = React.useState(false);
-  const [theme, setTheme] = React.useState(() => localStorage.getItem('hostel_theme') || 'light');
 
   const navItems = ALL_NAV_ITEMS.filter(item => item.roles.includes(role));
 
@@ -66,12 +66,6 @@ const Layout = ({ settings, collapsed, setCollapsed, handleLogout, user }) => {
   };
 
   const roleInfo = ROLE_COLORS[role] || ROLE_COLORS.student;
-
-  const handleThemeChange = (t) => {
-    setTheme(t);
-    localStorage.setItem('hostel_theme', t);
-    document.documentElement.setAttribute('data-theme', t);
-  };
 
   return (
     <div className="app-layout" style={{
@@ -210,8 +204,8 @@ const Layout = ({ settings, collapsed, setCollapsed, handleLogout, user }) => {
       {role === 'student' && profileOpen && (
         <StudentProfilePanel
           onClose={() => setProfileOpen(false)}
-          theme={theme}
-          onThemeChange={handleThemeChange}
+          theme={settings.theme}
+          onThemeChange={(t) => updateSettings({ theme: t })}
         />
       )}
     </div>

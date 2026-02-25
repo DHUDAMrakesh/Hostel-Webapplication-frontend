@@ -1,18 +1,17 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useSettings } from '../context/SettingsContext';
+import { useLanguage } from '../context/LanguageContext';
 
 /* ─── Shared inline style tokens ─── */
 const T = {
-    textPrimary: '#0f172a',
-    textSecondary: '#334155',
-    textMuted: '#64748b',
-    textAccMuted: '#475569',
-    bgInput: '#ffffff',
-    bgInputHov: '#f8faff',
-    border: '1px solid rgba(0,0,0,0.12)',
-    borderFocus: '1px solid rgba(79,70,229,0.55)',
-    borderSection: '1px solid rgba(0,0,0,0.08)',
+    textPrimary: 'var(--text-primary)',
+    textSecondary: 'var(--text-secondary)',
+    textMuted: 'var(--text-muted)',
+    bgInput: 'var(--bg-elevated)',
+    border: '1px solid var(--border-subtle)',
+    borderFocus: '1px solid var(--accent)',
+    borderSection: '1px solid var(--border-subtle)',
     radius: 10,
 };
 
@@ -111,7 +110,7 @@ const Select = ({ value, onChange, options }) => (
             cursor: 'pointer',
         }}
     >
-        {options.map(o => <option key={o.value} value={o.value} style={{ background: '#ffffff', color: '#0f172a' }}>{o.label}</option>)}
+        {options.map(o => <option key={o.value} value={o.value} style={{ background: 'var(--bg-elevated)', color: 'var(--text-primary)' }}>{o.label}</option>)}
     </select>
 );
 
@@ -134,6 +133,7 @@ const SaveBtn = ({ onClick, saved, accent }) => (
 
 export default function Settings() {
     const { settings, updateSettings, resetSettings } = useSettings();
+    const { t } = useLanguage();
 
     const [draft, setDraft] = useState({ ...settings });
     const [savedSection, setSavedSection] = useState(null);

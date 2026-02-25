@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import api from '../utils/api';
+import { useLanguage } from '../context/LanguageContext';
 import {
     AreaChart, Area, PieChart, Pie, Cell, Tooltip,
     ResponsiveContainer, XAxis, YAxis
@@ -16,9 +17,9 @@ const occupancyData = [
 const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
         return (
-            <div style={{ padding: '10px 14px', background: 'rgba(10,10,20,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, fontSize: 13 }}>
-                <div style={{ color: '#475569', marginBottom: 4 }}>{label}</div>
-                <div style={{ color: '#f1f5f9', fontWeight: 600 }}>{payload[0].value}% occupancy</div>
+            <div style={{ padding: '10px 14px', background: 'var(--bg-overlay)', border: '1px solid var(--border-subtle)', borderRadius: 12, fontSize: 13, boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
+                <div style={{ color: 'var(--text-muted)', marginBottom: 4 }}>{label}</div>
+                <div style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{payload[0].value}% occupancy</div>
             </div>
         );
     }
@@ -33,6 +34,7 @@ const cardConfigs = [
 ];
 
 export default function Dashboard() {
+    const { t } = useLanguage();
     const [stats, setStats] = useState({ totalBeds: 0, occupiedBeds: 0, availableBeds: 0, feeDues: 0 });
 
     useEffect(() => {
@@ -53,9 +55,9 @@ export default function Dashboard() {
     return (
         <div className="dashboard">
             <div className="page-header">
-                <div className="page-label">Overview</div>
-                <div className="page-title">Dashboard</div>
-                <div className="page-desc">Real-time hostel performance metrics.</div>
+                <div className="page-label">{t('Overview')}</div>
+                <div className="page-title">{t('Dashboard')}</div>
+                <div className="page-desc">{t('Real-time hostel performance metrics.')}</div>
             </div>
 
             {/* Stat Cards */}
@@ -75,7 +77,7 @@ export default function Dashboard() {
                             </div>
                             <span className={`stat-badge ${c.badge}`}>{c.change}</span>
                         </div>
-                        <div className="stat-label">{c.label}</div>
+                        <div className="stat-label">{t(c.label)}</div>
                         <div className="stat-value">{formatValue(c.key, stats[c.key])}</div>
                     </motion.div>
                 ))}
@@ -86,8 +88,8 @@ export default function Dashboard() {
                 <motion.div className="card chart-card" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
                     <div className="chart-header">
                         <div>
-                            <div className="chart-title-label">Occupancy Trend</div>
-                            <div className="chart-title-value">{occupancyPct}% this month</div>
+                            <div className="chart-title-label">{t('Occupancy Trend')}</div>
+                            <div className="chart-title-value">{occupancyPct}% {t('this month')}</div>
                         </div>
                         <div className="chart-trend">↑ +6% vs last month</div>
                     </div>
@@ -99,8 +101,8 @@ export default function Dashboard() {
                                     <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
                                 </linearGradient>
                             </defs>
-                            <XAxis dataKey="month" tick={{ fill: '#475569', fontSize: 11 }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fill: '#475569', fontSize: 11 }} axisLine={false} tickLine={false} domain={[50, 100]} />
+                            <XAxis dataKey="month" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} domain={[50, 100]} />
                             <Tooltip content={<CustomTooltip />} />
                             <Area type="monotone" dataKey="value" stroke="#6366f1" strokeWidth={2} fill="url(#areaGrad)" dot={false} activeDot={{ r: 5, fill: '#6366f1', strokeWidth: 0 }} />
                         </AreaChart>
@@ -108,29 +110,29 @@ export default function Dashboard() {
                 </motion.div>
 
                 <motion.div className="card pie-card" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.42 }}>
-                    <div className="chart-title-label" style={{ alignSelf: 'flex-start', marginBottom: 12 }}>Bed Utilization</div>
+                    <div className="chart-title-label" style={{ alignSelf: 'flex-start', marginBottom: 12 }}>{t('Bed Utilization')}</div>
                     <div style={{ position: 'relative' }}>
                         <ResponsiveContainer width={160} height={160}>
                             <PieChart>
                                 <Pie data={pieData} cx="50%" cy="50%" innerRadius={52} outerRadius={72} dataKey="value" startAngle={90} endAngle={-270} strokeWidth={0}>
                                     <Cell fill="#6366f1" />
-                                    <Cell fill="#1e1e2a" />
+                                    <Cell fill="var(--bg-elevated)" />
                                 </Pie>
                             </PieChart>
                         </ResponsiveContainer>
                         <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                            <span style={{ fontSize: 24, fontWeight: 700, color: '#f1f5f9' }}>{occupancyPct}%</span>
-                            <span style={{ fontSize: 11, color: '#475569' }}>Occupied</span>
+                            <span style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)' }}>{occupancyPct}%</span>
+                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{t('Occupied')}</span>
                         </div>
                     </div>
                     <div className="pie-legend">
-                        {[{ label: 'Occupied', color: '#6366f1', val: stats.occupiedBeds }, { label: 'Available', color: '#1e1e2a', val: stats.availableBeds }].map(l => (
+                        {[{ label: t('Occupied'), color: '#6366f1', val: stats.occupiedBeds }, { label: t('Available'), color: 'var(--bg-elevated)', val: stats.availableBeds }].map(l => (
                             <div key={l.label} className="pie-legend-item">
                                 <div style={{ display: 'flex', alignItems: 'center' }}>
                                     <span className="pie-dot" style={{ background: l.color, boxShadow: `0 0 6px ${l.color}` }} />
-                                    <span style={{ color: '#94a3b8' }}>{l.label}</span>
+                                    <span style={{ color: 'var(--text-muted)' }}>{l.label}</span>
                                 </div>
-                                <span style={{ color: '#f1f5f9', fontWeight: 600 }}>{l.val}</span>
+                                <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{l.val}</span>
                             </div>
                         ))}
                     </div>
@@ -139,9 +141,9 @@ export default function Dashboard() {
 
             {/* Quick Actions */}
             <motion.div className="card quick-actions-card" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
-                <div className="chart-title-label">Quick Actions</div>
+                <div className="chart-title-label">{t('Quick Actions')}</div>
                 <div className="quick-actions-grid">
-                    {['Add Student', 'Record Payment', 'Manage Rooms', 'View Reports'].map(a => (
+                    {[t('Add Student'), t('Record Payment'), t('Manage Rooms'), t('View Reports')].map(a => (
                         <button key={a} className="action-btn">
                             <span>{a}</span>
                             <span style={{ fontSize: 14 }}>↗</span>

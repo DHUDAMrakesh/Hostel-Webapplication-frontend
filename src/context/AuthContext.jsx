@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 const AuthContext = createContext(null);
 
 // Always point to the backend server directly (works with or without Vite proxy)
-const API = `${window.location.protocol}//${window.location.hostname}:5000/api/auth`;
+const API = `${window.location.protocol}//${window.location.hostname}:5001/api/auth`;
 
 
 
@@ -23,7 +23,7 @@ export function AuthProvider({ children }) {
         setLoading(false);
     }, []);
 
-    /** Login: calls POST /api/auth/login, persists token + user in localStorage */
+    /** Login: calls POST /api/auth/login */
     const login = async (email, password) => {
         const res = await fetch(`${API}/login`, {
             method: 'POST',
@@ -32,6 +32,27 @@ export function AuthProvider({ children }) {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.message || 'Login failed');
+
+        if (data.mfaRequired) {
+            return { mfaRequired: true, email: data.email };
+        }
+
+        localStorage.setItem('hostel_token', data.token);
+        localStorage.setItem('hostel_user', JSON.stringify(data.user));
+        setToken(data.token);
+        setUser(data.user);
+        return { user: data.user };
+    };
+
+    /** Verify 2FA: completes the login flow */
+    const verify2FA = async (email, otp) => {
+        const res = await fetch(`${API}/verify-2fa`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, otp }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Verification failed');
 
         localStorage.setItem('hostel_token', data.token);
         localStorage.setItem('hostel_user', JSON.stringify(data.user));
@@ -65,6 +86,15 @@ export function AuthProvider({ children }) {
         setUser(null);
     };
 
+    /** Update user fields (e.g. name, phone) in memory + localStorage */
+    const updateUser = (fields) => {
+        setUser(prev => {
+            const updated = { ...prev, ...fields };
+            localStorage.setItem('hostel_user', JSON.stringify(updated));
+            return updated;
+        });
+    };
+
     /** Utility: returns Authorization header object */
     const authHeader = () => ({
         Authorization: `Bearer ${token}`,
@@ -74,7 +104,7 @@ export function AuthProvider({ children }) {
     const isAuthenticated = !!user;
 
     return (
-        <AuthContext.Provider value={{ user, token, loading, isAuthenticated, login, register, logout, authHeader }}>
+        <AuthContext.Provider value={{ user, token, loading, isAuthenticated, login, verify2FA, register, logout, authHeader, updateUser }}>
             {children}
         </AuthContext.Provider>
     );

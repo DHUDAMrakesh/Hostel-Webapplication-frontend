@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../utils/api';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useLanguage } from '../context/LanguageContext';
 
 const API = '';
 const METHODS = ['Cash', 'UPI', 'Bank Transfer', 'Card'];
@@ -57,11 +58,11 @@ function AddPaymentModal({ student, onClose, onSaved }) {
 
     const inputStyle = {
         width: '100%', padding: '9px 12px', borderRadius: 8,
-        border: '1px solid rgba(0,0,0,0.12)', background: '#fff',
-        fontSize: 13, color: '#0f172a', fontFamily: 'Outfit, sans-serif',
+        border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)',
+        fontSize: 13, color: 'var(--text-primary)', fontFamily: 'Outfit, sans-serif',
         outline: 'none', boxSizing: 'border-box',
     };
-    const labelStyle = { fontSize: 12, fontWeight: 600, color: '#334155', display: 'block', marginBottom: 5 };
+    const labelStyle = { fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 5 };
 
     return (
         <div style={{
@@ -75,17 +76,18 @@ function AddPaymentModal({ student, onClose, onSaved }) {
                 exit={{ opacity: 0, scale: 0.94 }}
                 transition={{ duration: 0.2 }}
                 style={{
-                    background: '#f8faff', borderRadius: 18, width: '100%', maxWidth: 460,
+                    background: 'var(--bg-base)', borderRadius: 18, width: '100%', maxWidth: 460,
                     boxShadow: '0 24px 80px rgba(0,0,0,0.18)', overflow: 'hidden',
+                    border: '1px solid var(--border-subtle)',
                 }}
             >
                 {/* Header */}
-                <div style={{ padding: '20px 24px 18px', borderBottom: '1px solid rgba(0,0,0,0.08)', background: '#fff', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                <div style={{ padding: '20px 24px 18px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                     <div>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em' }}>New Transaction</div>
-                        <div style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', marginTop: 2 }}>Add Payment — {student.name}</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>New Transaction</div>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginTop: 2 }}>Add Payment — {student.name}</div>
                     </div>
-                    <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.07)', color: '#334155', fontSize: 15, cursor: 'pointer' }}>✕</button>
+                    <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: 15, cursor: 'pointer' }}>✕</button>
                 </div>
 
                 <div style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -120,8 +122,8 @@ function AddPaymentModal({ student, onClose, onSaved }) {
                     {error && <div style={{ padding: '9px 12px', background: 'rgba(225,29,72,0.08)', border: '1px solid rgba(225,29,72,0.2)', borderRadius: 8, fontSize: 13, color: '#e11d48' }}>⚠ {error}</div>}
                 </div>
 
-                <div style={{ padding: '14px 24px', borderTop: '1px solid rgba(0,0,0,0.08)', background: '#fff', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-                    <button onClick={onClose} style={{ padding: '9px 20px', borderRadius: 10, border: '1px solid rgba(0,0,0,0.12)', background: '#fff', color: '#334155', fontSize: 14, fontWeight: 600, fontFamily: 'Outfit, sans-serif', cursor: 'pointer' }}>Cancel</button>
+                <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                    <button onClick={onClose} style={{ padding: '9px 20px', borderRadius: 10, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: 14, fontWeight: 600, fontFamily: 'Outfit, sans-serif', cursor: 'pointer' }}>Cancel</button>
                     <button onClick={handleSave} disabled={saving} style={{ padding: '9px 22px', borderRadius: 10, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', fontSize: 14, fontWeight: 600, fontFamily: 'Outfit, sans-serif', opacity: saving ? 0.7 : 1, boxShadow: '0 4px 14px rgba(79,70,229,0.3)' }}>
                         {saving ? 'Saving…' : '+ Add Payment'}
                     </button>
@@ -157,19 +159,19 @@ function StudentModal({ editData, onClose, onSaved }) {
         }
     };
 
-    const inputStyle = { width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid rgba(0,0,0,0.12)', background: '#fff', fontSize: 13, color: '#0f172a', fontFamily: 'Outfit, sans-serif', outline: 'none', boxSizing: 'border-box' };
-    const labelStyle = { fontSize: 12, fontWeight: 600, color: '#334155', display: 'block', marginBottom: 5 };
+    const inputStyle = { width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', fontSize: 13, color: 'var(--text-primary)', fontFamily: 'Outfit, sans-serif', outline: 'none', boxSizing: 'border-box' };
+    const labelStyle = { fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 5 };
 
     return (
         <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(15,23,42,0.45)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={e => e.target === e.currentTarget && onClose()}>
             <motion.div initial={{ opacity: 0, scale: 0.94, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.94 }} transition={{ duration: 0.2 }}
-                style={{ background: '#f8faff', borderRadius: 18, width: '100%', maxWidth: 500, boxShadow: '0 24px 80px rgba(0,0,0,0.18)', overflow: 'hidden' }}>
-                <div style={{ padding: '20px 24px 18px', borderBottom: '1px solid rgba(0,0,0,0.08)', background: '#fff', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                style={{ background: 'var(--bg-base)', borderRadius: 18, width: '100%', maxWidth: 500, boxShadow: '0 24px 80px rgba(0,0,0,0.18)', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
+                <div style={{ padding: '20px 24px 18px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                     <div>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{isEdit ? 'Edit Student' : 'New Student'}</div>
-                        <div style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', marginTop: 2 }}>{isEdit ? `Editing — ${editData.name}` : 'Add Student'}</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{isEdit ? 'Edit Student' : 'New Student'}</div>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginTop: 2 }}>{isEdit ? `Editing — ${editData.name}` : 'Add Student'}</div>
                     </div>
-                    <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.07)', color: '#334155', fontSize: 15, cursor: 'pointer' }}>✕</button>
+                    <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: 15, cursor: 'pointer' }}>✕</button>
                 </div>
                 <div style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -182,8 +184,8 @@ function StudentModal({ editData, onClose, onSaved }) {
                     </div>
                     {error && <div style={{ padding: '9px 12px', background: 'rgba(225,29,72,0.08)', border: '1px solid rgba(225,29,72,0.2)', borderRadius: 8, fontSize: 13, color: '#e11d48' }}>⚠ {error}</div>}
                 </div>
-                <div style={{ padding: '14px 24px', borderTop: '1px solid rgba(0,0,0,0.08)', background: '#fff', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-                    <button onClick={onClose} style={{ padding: '9px 20px', borderRadius: 10, border: '1px solid rgba(0,0,0,0.12)', background: '#fff', color: '#334155', fontSize: 14, fontWeight: 600, fontFamily: 'Outfit, sans-serif', cursor: 'pointer' }}>Cancel</button>
+                <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                    <button onClick={onClose} style={{ padding: '9px 20px', borderRadius: 10, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: 14, fontWeight: 600, fontFamily: 'Outfit, sans-serif', cursor: 'pointer' }}>Cancel</button>
                     <button onClick={handleSave} disabled={saving} style={{ padding: '9px 22px', borderRadius: 10, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', fontSize: 14, fontWeight: 600, fontFamily: 'Outfit, sans-serif', opacity: saving ? 0.7 : 1, boxShadow: '0 4px 14px rgba(79,70,229,0.3)' }}>
                         {saving ? 'Saving…' : isEdit ? '✓ Update' : '+ Add Student'}
                     </button>
@@ -219,13 +221,13 @@ function StudentDetail({ student, onAddPayment, onDeletePayment, onEdit, onDelet
                             {student.name.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                            <div style={{ fontSize: 20, fontWeight: 700, color: '#0f172a' }}>{student.name}</div>
-                            <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>
+                            <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>{student.name}</div>
+                            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
                                 Room {student.roomNumber}
                                 {student.email && ` · ${student.email}`}
                                 {student.phone && ` · ${student.phone}`}
                             </div>
-                            <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
+                            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, opacity: 0.8 }}>
                                 Joined {new Date(student.joinedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                             </div>
                         </div>
@@ -243,8 +245,8 @@ function StudentDetail({ student, onAddPayment, onDeletePayment, onEdit, onDelet
                         { label: 'Total Paid', value: `₹${totalPaid.toLocaleString('en-IN')}`, color: '#059669' },
                         { label: 'Outstanding Dues', value: `₹${(student.feeDues || 0).toLocaleString('en-IN')}`, color: student.feeDues > 0 ? '#e11d48' : '#059669' },
                     ].map(stat => (
-                        <div key={stat.label} style={{ padding: '14px 16px', borderRadius: 12, background: '#f0f4ff', border: '1px solid rgba(0,0,0,0.07)' }}>
-                            <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>{stat.label}</div>
+                        <div key={stat.label} style={{ padding: '14px 16px', borderRadius: 12, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>{stat.label}</div>
                             <div style={{ fontSize: 22, fontWeight: 700, color: stat.color }}>{stat.value}</div>
                         </div>
                     ))}
@@ -255,8 +257,8 @@ function StudentDetail({ student, onAddPayment, onDeletePayment, onEdit, onDelet
             <div className="card" style={{ padding: 24, flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
                     <div>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Transaction History</div>
-                        <div style={{ fontSize: 17, fontWeight: 700, color: '#0f172a', marginTop: 2 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Transaction History</div>
+                        <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-primary)', marginTop: 2 }}>
                             {student.payments.length} record{student.payments.length !== 1 && 's'}
                         </div>
                     </div>
@@ -268,7 +270,7 @@ function StudentDetail({ student, onAddPayment, onDeletePayment, onEdit, onDelet
                 </div>
 
                 {student.payments.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
+                    <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
                         <div style={{ fontSize: 36, marginBottom: 10 }}>📋</div>
                         <div style={{ fontSize: 14 }}>No payments recorded yet.</div>
                     </div>
@@ -287,13 +289,13 @@ function StudentDetail({ student, onAddPayment, onDeletePayment, onEdit, onDelet
                                     {p.status === 'Paid' ? '✓' : p.status === 'Pending' ? '⏳' : '⚠'}
                                 </div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>{p.month || '—'}</div>
-                                    <div style={{ fontSize: 12, color: '#64748b' }}>
+                                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{p.month || '—'}</div>
+                                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                                         {p.method} · {new Date(p.paidAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                                         {p.note && ` · ${p.note}`}
                                     </div>
                                 </div>
-                                <div style={{ fontSize: 16, fontWeight: 700, color: STATUS_STYLE[p.status]?.color || '#0f172a', flexShrink: 0 }}>
+                                <div style={{ fontSize: 16, fontWeight: 700, color: STATUS_STYLE[p.status]?.color || 'var(--text-primary)', flexShrink: 0 }}>
                                     ₹{Number(p.amount).toLocaleString('en-IN')}
                                 </div>
                                 <Badge status={p.status} />
@@ -313,6 +315,7 @@ function StudentDetail({ student, onAddPayment, onDeletePayment, onEdit, onDelet
 
 /* ─── Main Component ─── */
 export default function Payments() {
+    const { t } = useLanguage();
     const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState(null);
@@ -398,7 +401,7 @@ export default function Payments() {
                     <div key={s.label} className="card" style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
                         <div style={{ width: 44, height: 44, borderRadius: 12, background: `${s.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{s.icon}</div>
                         <div>
-                            <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{s.label}</div>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{s.label}</div>
                             <div style={{ fontSize: 22, fontWeight: 700, color: s.color }}>{s.value}</div>
                         </div>
                     </div>
@@ -416,19 +419,19 @@ export default function Payments() {
                             placeholder="🔍  Name or room…"
                             value={search}
                             onChange={e => setSearch(e.target.value)}
-                            style={{ width: '100%', padding: '9px 12px', borderRadius: 10, border: '1px solid rgba(0,0,0,0.12)', background: '#fff', fontSize: 13, color: '#0f172a', fontFamily: 'Outfit, sans-serif', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
+                            style={{ width: '100%', padding: '9px 12px', borderRadius: 10, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', fontSize: 13, color: 'var(--text-primary)', fontFamily: 'Outfit, sans-serif', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
                         />
                         <div style={{ display: 'flex', gap: 6 }}>
                             {['All', 'Dues', 'Clear'].map(f => (
                                 <button key={f} onClick={() => setFilterStatus(f)}
-                                    style={{ flex: 1, padding: '5px 0', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 600, fontFamily: 'Outfit, sans-serif', background: filterStatus === f ? '#4f46e5' : 'rgba(0,0,0,0.06)', color: filterStatus === f ? '#fff' : '#334155', transition: 'all 0.2s' }}
+                                    style={{ flex: 1, padding: '5px 0', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 600, fontFamily: 'Outfit, sans-serif', background: filterStatus === f ? 'var(--accent)' : 'var(--bg-elevated)', color: filterStatus === f ? '#fff' : 'var(--text-secondary)', transition: 'all 0.2s' }}
                                 >{f}</button>
                             ))}
                         </div>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        {filtered.length === 0 && <div style={{ fontSize: 13, color: '#94a3b8', textAlign: 'center', padding: '24px 0' }}>No students found</div>}
+                        {filtered.length === 0 && <div style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '24px 0' }}>No students found</div>}
                         {filtered.map(s => (
                             <motion.button
                                 key={s._id}
@@ -436,16 +439,16 @@ export default function Payments() {
                                 onClick={() => setSelected(s)}
                                 style={{
                                     width: '100%', textAlign: 'left', padding: '12px 14px', borderRadius: 12,
-                                    border: `1px solid ${selected?._id === s._id ? 'rgba(79,70,229,0.3)' : 'transparent'}`,
-                                    background: selected?._id === s._id ? 'rgba(79,70,229,0.09)' : 'rgba(255,255,255,0.7)',
+                                    border: `1px solid ${selected?._id === s._id ? 'var(--accent-muted)' : 'transparent'}`,
+                                    background: selected?._id === s._id ? 'var(--accent-glow)' : 'var(--bg-surface)',
                                     cursor: 'pointer', fontFamily: 'Outfit, sans-serif', transition: 'all 0.2s',
                                 }}
                             >
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <div style={{ fontSize: 14, fontWeight: 600, color: selected?._id === s._id ? '#4f46e5' : '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</div>
+                                    <div style={{ fontSize: 14, fontWeight: 600, color: selected?._id === s._id ? 'var(--accent)' : 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</div>
                                     {s.feeDues > 0 && <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#e11d48', flexShrink: 0 }} />}
                                 </div>
-                                <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>Room {s.roomNumber}</div>
+                                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Room {s.roomNumber}</div>
                                 {s.feeDues > 0 && <div style={{ fontSize: 11, color: '#e11d48', marginTop: 2, fontWeight: 600 }}>₹{s.feeDues.toLocaleString('en-IN')} due</div>}
                             </motion.button>
                         ))}
@@ -462,12 +465,13 @@ export default function Payments() {
                         onDelete={handleDeleteStudent}
                     />
                 ) : (
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', height: 300, flexDirection: 'column', gap: 12, color: '#94a3b8' }}>
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', height: 300, flexDirection: 'column', gap: 12, color: 'var(--text-muted)' }}>
                         <div style={{ fontSize: 48 }}>👈</div>
                         <div style={{ fontSize: 15, fontWeight: 500 }}>Select a student to view details</div>
                     </div>
                 )}
             </div>
+
 
             {/* Modals */}
             <AnimatePresence>
@@ -475,6 +479,6 @@ export default function Payments() {
                 {modal === 'editStudent' && selected && <StudentModal editData={selected} onClose={() => setModal(null)} onSaved={afterModal} />}
                 {modal === 'addPayment' && selected && <AddPaymentModal student={selected} onClose={() => setModal(null)} onSaved={afterModal} />}
             </AnimatePresence>
-        </div>
+        </div >
     );
 }

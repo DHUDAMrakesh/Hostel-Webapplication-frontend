@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 
 const facilityStyles = [
     { glow: 'rgba(99,102,241,0.35)', iconBg: 'linear-gradient(135deg,#6366f1,#8b5cf6)', badgeColor: '#818cf8', badgeBg: 'rgba(99,102,241,0.1)', badgeBorder: 'rgba(99,102,241,0.25)', accent: '#6366f1' },
@@ -74,9 +75,10 @@ function FacilityModal({ facility, style, onClose }) {
                 exit={{ opacity: 0, scale: 0.92, y: 24 }}
                 transition={{ duration: 0.25, ease: 'easeOut' }}
                 style={{
-                    background: 'linear-gradient(135deg, rgba(255,255,255,0.97), rgba(248,250,255,0.97))',
+                    background: 'var(--bg-base)',
                     borderRadius: 22, width: '100%', maxWidth: 520,
-                    boxShadow: `0 32px 100px rgba(0,0,0,0.22), 0 0 0 1px rgba(255,255,255,0.5)`,
+                    boxShadow: `0 32px 100px rgba(0,0,0,0.22)`,
+                    border: '1px solid var(--border-subtle)',
                     overflow: 'hidden',
                 }}
             >
@@ -122,19 +124,19 @@ function FacilityModal({ facility, style, onClose }) {
                         ].map(info => (
                             <div key={info.label} style={{
                                 padding: '12px 14px', borderRadius: 14,
-                                background: style.badgeBg, border: `1px solid ${style.badgeBorder}`,
+                                background: 'var(--bg-elevated)', border: `1px solid var(--border-subtle)`,
                                 textAlign: 'center',
                             }}>
                                 <div style={{ fontSize: 18, marginBottom: 4 }}>{info.icon}</div>
-                                <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>{info.label}</div>
-                                <div style={{ fontSize: 11, fontWeight: 600, color: '#0f172a', lineHeight: 1.4 }}>{info.value}</div>
+                                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>{info.label}</div>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.4 }}>{info.value}</div>
                             </div>
                         ))}
                     </div>
 
                     {/* Highlights */}
                     <div style={{ marginBottom: 20 }}>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>What's Included</div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>What's Included</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                             {meta.highlights.map((h, i) => (
                                 <motion.div
@@ -145,7 +147,7 @@ function FacilityModal({ facility, style, onClose }) {
                                     style={{
                                         display: 'flex', alignItems: 'center', gap: 10,
                                         padding: '10px 14px', borderRadius: 12,
-                                        background: 'rgba(255,255,255,0.8)', border: '1px solid rgba(0,0,0,0.06)',
+                                        background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
                                     }}
                                 >
                                     <span style={{
@@ -154,7 +156,7 @@ function FacilityModal({ facility, style, onClose }) {
                                         fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
                                         flexShrink: 0, fontWeight: 700,
                                     }}>✓</span>
-                                    <span style={{ fontSize: 13, color: '#334155', fontWeight: 500 }}>{h}</span>
+                                    <span style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>{h}</span>
                                 </motion.div>
                             ))}
                         </div>
@@ -173,7 +175,7 @@ function FacilityModal({ facility, style, onClose }) {
                             }} />
                             <span style={{ fontSize: 13, fontWeight: 600, color: '#059669' }}>Facility Available</span>
                         </div>
-                        <span style={{ fontSize: 12, color: '#64748b' }}>Open to all residents</span>
+                        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Open to all residents</span>
                     </div>
                 </div>
             </motion.div>
@@ -184,6 +186,7 @@ function FacilityModal({ facility, style, onClose }) {
 /* ─── Main Component ─── */
 export default function Facilities() {
     const { user } = useAuth();
+    const { t } = useLanguage();
     const [facilities, setFacilities] = useState([]);
     const [selected, setSelected] = useState(null); // facility to show in modal
 
