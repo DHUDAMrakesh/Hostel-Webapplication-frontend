@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useSettings } from '../context/SettingsContext';
 import { useLanguage } from '../context/LanguageContext';
+import ConfirmModal from './ConfirmModal';
 
 /* ─── Shared inline style tokens ─── */
 const T = {
@@ -137,6 +138,7 @@ export default function Settings() {
 
     const [draft, setDraft] = useState({ ...settings });
     const [savedSection, setSavedSection] = useState(null);
+    const [showResetConfirm, setShowResetConfirm] = useState(false);
 
     const set = (key) => (val) => setDraft(prev => ({ ...prev, [key]: val }));
 
@@ -310,18 +312,7 @@ export default function Settings() {
                 </div>
                 <Field label="Reset to Defaults" hint="Reset all settings to factory defaults.">
                     <button
-                        onClick={() => {
-                            if (window.confirm('Reset all settings to defaults?')) {
-                                resetSettings();
-                                setDraft({
-                                    hostelName: 'HostelPro', adminName: 'Admin', adminEmail: 'admin@hostelpro.com',
-                                    phone: '+91 98765 43210', address: '123 College Road, City',
-                                    monthlyFee: '5000', lateFee: '200', dueDayOfMonth: '5', currency: 'INR',
-                                    emailNotif: true, dueAlerts: true, occupancyAlerts: false, maintenanceAlerts: true,
-                                    theme: 'light', accentColor: '#4f46e5', language: 'en', twoFactor: false,
-                                });
-                            }
-                        }}
+                        onClick={() => setShowResetConfirm(true)}
                         style={{
                             padding: '9px 20px', borderRadius: 10,
                             border: '1px solid rgba(225,29,72,0.3)',
@@ -337,6 +328,29 @@ export default function Settings() {
                     </button>
                 </Field>
             </motion.div>
+
+            {/* Reset Defaults Confirmation */}
+            <ConfirmModal
+                open={showResetConfirm}
+                icon="↺"
+                title="Reset All Settings?"
+                message="All settings will be restored to factory defaults. This cannot be undone."
+                confirmText="Yes, Reset"
+                cancelText="Cancel"
+                danger={true}
+                onConfirm={() => {
+                    resetSettings();
+                    setDraft({
+                        hostelName: 'HostelPro', adminName: 'Admin', adminEmail: 'admin@hostelpro.com',
+                        phone: '+91 98765 43210', address: '123 College Road, City',
+                        monthlyFee: '5000', lateFee: '200', dueDayOfMonth: '5', currency: 'INR',
+                        emailNotif: true, dueAlerts: true, occupancyAlerts: false, maintenanceAlerts: true,
+                        theme: 'light', accentColor: '#4f46e5', language: 'en', twoFactor: false,
+                    });
+                    setShowResetConfirm(false);
+                }}
+                onCancel={() => setShowResetConfirm(false)}
+            />
         </div>
     );
 }

@@ -1,22 +1,39 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Routes, Route, Navigate, useNavigate, useLocation, Outlet, useParams } from 'react-router-dom';
-import Dashboard from './components/Dashboard';
-import FoodMenu from './components/FoodMenu';
-import Facilities from './components/Facilities';
-import Payments from './components/Payments';
-import Students from './components/Students';
-import Settings from './components/Settings';
-import Unauthorized from './components/Unauthorized';
-import StudentDashboard from './components/Student/StudentDashboard';
-import MyRoom from './components/Student/MyRoom';
-import MyFees from './components/Student/MyFees';
-import MyComplaints from './components/Student/MyComplaints';
+import { SkeletonPage } from './components/Skeleton';
+
+// ─── Lazy-loaded page bundles (each becomes its own JS chunk) ───
+const Dashboard = lazy(() => import('./components/Dashboard'));
+const FoodMenu = lazy(() => import('./components/FoodMenu'));
+const Facilities = lazy(() => import('./components/Facilities'));
+const Payments = lazy(() => import('./components/Payments'));
+const Students = lazy(() => import('./components/Students'));
+const Rooms = lazy(() => import('./components/Rooms'));
+const Settings = lazy(() => import('./components/Settings'));
+const Unauthorized = lazy(() => import('./components/Unauthorized'));
+const StudentDashboard = lazy(() => import('./components/Student/StudentDashboard'));
+const MyRoom = lazy(() => import('./components/Student/MyRoom'));
+const MyFees = lazy(() => import('./components/Student/MyFees'));
+const MyComplaints = lazy(() => import('./components/Student/MyComplaints'));
+const AdminComplaints = lazy(() => import('./components/AdminComplaints'));
+const NotificationCenter = lazy(() => import('./components/NotificationCenter'));
+
+// Profile panels are small and used immediately on auth — keep eager
 import StudentProfilePanel from './components/Student/StudentProfilePanel';
+import AdminProfilePanel from './components/AdminProfilePanel';
 import { useSettings } from './context/SettingsContext';
 import { useAuth } from './context/AuthContext';
 import Login from './components/Auth/Login';
 import Signup from './components/Auth/Signup';
+
+// Suspense wrapper with skeleton fallback
+const PageSuspense = ({ children, rows = false }) => (
+  <Suspense fallback={<SkeletonPage cards={6} stats={4} rows={rows} />}>
+    {children}
+  </Suspense>
+);
+
 
 // Role badge styles
 const ROLE_COLORS = {
@@ -32,7 +49,9 @@ const ALL_NAV_ITEMS = [
   { id: 'menu', label: 'Food Menu', icon: '🍽', roles: ['admin', 'manager'] },
   { id: 'facilities', label: 'Facilities', icon: '✦', roles: ['admin', 'manager'] },
   { id: 'students', label: 'Students', icon: '🎓', roles: ['admin', 'manager'] },
+  { id: 'rooms', label: 'Rooms', icon: '🏠', roles: ['admin', 'manager'] },
   { id: 'payments', label: 'Manage Payments', icon: '💳', roles: ['admin', 'manager'] },
+  { id: 'complaints', label: 'Complaints', icon: '💬', roles: ['admin', 'manager'] },
   // Student-only pages
   { id: 'dashboard', label: 'My Dashboard', icon: '⊞', roles: ['student'] },
   { id: 'room', label: 'My Room', icon: '🛏', roles: ['student'] },
@@ -154,6 +173,11 @@ const Layout = ({ settings, collapsed, setCollapsed, handleLogout, user }) => {
               <span className="status-dot" style={{ background: '#10b981', boxShadow: '0 0 8px #10b981' }}></span>
               All systems operational
             </div>
+
+            {(role === 'admin' || role === 'manager') && (
+              <NotificationCenter accentColor={settings.accentColor} />
+            )}
+
             {/* Role badge */}
             <div style={{
               padding: '4px 12px',
@@ -167,17 +191,17 @@ const Layout = ({ settings, collapsed, setCollapsed, handleLogout, user }) => {
             }}>
               {roleInfo.label}
             </div>
-            {/* Avatar — clickable for student to open profile panel */}
+            {/* Avatar — clickable for all roles to open their profile panel */}
             <div
               className="avatar"
-              onClick={() => role === 'student' && setProfileOpen(true)}
+              onClick={() => setProfileOpen(true)}
               style={{
                 background: `linear-gradient(135deg, ${settings.accentColor}, #a855f7)`,
-                cursor: role === 'student' ? 'pointer' : 'default',
-                outline: role === 'student' ? `2px solid ${settings.accentColor}66` : 'none',
+                cursor: 'pointer',
+                outline: `2px solid ${settings.accentColor}66`,
                 outlineOffset: 2,
               }}
-              title={role === 'student' ? 'My Profile' : user?.email}
+              title="My Profile"
             >
               {(user?.name || settings.adminName).charAt(0).toUpperCase()}
             </div>
@@ -203,6 +227,15 @@ const Layout = ({ settings, collapsed, setCollapsed, handleLogout, user }) => {
       {/* Student profile slide panel */}
       {role === 'student' && profileOpen && (
         <StudentProfilePanel
+          onClose={() => setProfileOpen(false)}
+          theme={settings.theme}
+          onThemeChange={(t) => updateSettings({ theme: t })}
+        />
+      )}
+
+      {/* Admin / Manager profile slide panel */}
+      {(role === 'admin' || role === 'manager') && profileOpen && (
+        <AdminProfilePanel
           onClose={() => setProfileOpen(false)}
           theme={settings.theme}
           onThemeChange={(t) => updateSettings({ theme: t })}
@@ -244,6 +277,13 @@ const RoleDashboard = () => {
   const { user } = useAuth();
   if (!user) return <Spinner />;
   return user.role === 'student' ? <StudentDashboard /> : <Dashboard />;
+};
+
+// Renders the correct complaints page based on the logged-in user's role
+const RoleComplaints = () => {
+  const { user } = useAuth();
+  if (!user) return <Spinner />;
+  return user.role === 'student' ? <MyComplaints /> : <AdminComplaints />;
 };
 
 // ─── RoleLayout wrapper ────────────────────────────────────────────────────────
@@ -340,44 +380,45 @@ export default function App() {
             <Route path="dashboard" element={<RoleDashboard />} />
 
             {/* All roles */}
-            <Route path="menu" element={<FoodMenu />} />
-            <Route path="facilities" element={<Facilities />} />
+            <Route path="menu" element={<PageSuspense><FoodMenu /></PageSuspense>} />
+            <Route path="facilities" element={<PageSuspense><Facilities /></PageSuspense>} />
 
             {/* Admin + Manager only */}
             <Route path="students" element={
               <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                <Students />
+                <PageSuspense rows><Students /></PageSuspense>
+              </ProtectedRoute>
+            } />
+            <Route path="rooms" element={
+              <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                <PageSuspense><Rooms /></PageSuspense>
               </ProtectedRoute>
             } />
             <Route path="payments" element={
               <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                <Payments />
+                <PageSuspense rows><Payments /></PageSuspense>
               </ProtectedRoute>
             } />
 
             {/* Admin only */}
             <Route path="settings" element={
               <ProtectedRoute allowedRoles={['admin']}>
-                <Settings />
+                <PageSuspense><Settings /></PageSuspense>
               </ProtectedRoute>
             } />
 
             {/* Student-only pages */}
             <Route path="room" element={
               <ProtectedRoute allowedRoles={['student']}>
-                <MyRoom />
+                <PageSuspense><MyRoom /></PageSuspense>
               </ProtectedRoute>
             } />
             <Route path="fees" element={
               <ProtectedRoute allowedRoles={['student']}>
-                <MyFees />
+                <PageSuspense rows><MyFees /></PageSuspense>
               </ProtectedRoute>
             } />
-            <Route path="complaints" element={
-              <ProtectedRoute allowedRoles={['student']}>
-                <MyComplaints />
-              </ProtectedRoute>
-            } />
+            <Route path="complaints" element={<RoleComplaints />} />
           </Route>
 
           {/* ── Root & fallback ── */}

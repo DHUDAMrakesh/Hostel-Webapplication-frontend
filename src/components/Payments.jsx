@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../utils/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../context/LanguageContext';
+import ConfirmModal from './ConfirmModal';
 
 const API = '';
 const METHODS = ['Cash', 'UPI', 'Bank Transfer', 'Card'];
@@ -196,7 +197,7 @@ function StudentModal({ editData, onClose, onSaved }) {
 }
 
 /* ─── Student Detail Panel ─── */
-function StudentDetail({ student, onAddPayment, onDeletePayment, onEdit, onDelete }) {
+function StudentDetail({ student, onAddPayment, onDeletePayment, onEdit, onDelete, onSendReminder, reminderLoading, reminderResult }) {
     const totalPaid = student.payments.filter(p => p.status === 'Paid').reduce((a, p) => a + p.amount, 0);
 
     return (
@@ -267,7 +268,38 @@ function StudentDetail({ student, onAddPayment, onDeletePayment, onEdit, onDelet
                         onClick={onAddPayment}
                         style={{ padding: '9px 18px', borderRadius: 10, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit, sans-serif', boxShadow: '0 4px 14px rgba(79,70,229,0.3)' }}
                     >+ Add Payment</motion.button>
+
+                    {/* WhatsApp Reminder button */}
+                    <motion.button
+                        whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+                        onClick={onSendReminder}
+                        disabled={reminderLoading || !student.phone}
+                        title={!student.phone ? 'No phone number on record' : 'Send WhatsApp fee reminder to student'}
+                        style={{
+                            padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(37,211,102,0.35)',
+                            cursor: reminderLoading || !student.phone ? 'not-allowed' : 'pointer',
+                            background: 'rgba(37,211,102,0.1)', color: '#25d366',
+                            fontSize: 13, fontWeight: 600, fontFamily: 'Outfit, sans-serif',
+                            opacity: reminderLoading || !student.phone ? 0.6 : 1,
+                            display: 'flex', alignItems: 'center', gap: 6,
+                        }}
+                    >
+                        {reminderLoading ? '⏳ Sending…' : '📲 Remind'}
+                    </motion.button>
                 </div>
+
+                {/* WhatsApp reminder result banner — auto-clears after 5s */}
+                {reminderResult && (
+                    <div style={{
+                        padding: '9px 14px', borderRadius: 10, marginBottom: 12,
+                        background: reminderResult.ok ? 'rgba(37,211,102,0.1)' : 'rgba(225,29,72,0.08)',
+                        border: `1px solid ${reminderResult.ok ? 'rgba(37,211,102,0.3)' : 'rgba(225,29,72,0.2)'}`,
+                        fontSize: 13, color: reminderResult.ok ? '#25d366' : '#e11d48',
+                        display: 'flex', alignItems: 'center', gap: 8,
+                    }}>
+                        {reminderResult.ok ? '✅' : '❌'} {reminderResult.message}
+                    </div>
+                )}
 
                 {student.payments.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
@@ -321,7 +353,11 @@ export default function Payments() {
     const [selected, setSelected] = useState(null);
     const [search, setSearch] = useState('');
     const [filterStatus, setFilterStatus] = useState('All');
-    const [modal, setModal] = useState(null); // null | 'addStudent' | 'editStudent' | 'addPayment'
+    const [modal, setModal] = useState(null);
+    const [confirmStudent, setConfirmStudent] = useState(false);
+    const [confirmPaymentId, setConfirmPaymentId] = useState(null);
+    const [reminderLoading, setReminderLoading] = useState(false);
+    const [reminderResult, setReminderResult] = useState(null);
 
     const fetchStudents = async () => {
         try {
@@ -339,20 +375,38 @@ export default function Payments() {
     useEffect(() => { fetchStudents(); }, []);
 
     const handleDeleteStudent = async () => {
-        if (!selected || !window.confirm(`Remove ${selected.name} from the system?`)) return;
+        if (!selected) return;
         await api.delete(`/students/${selected._id}`);
         const remaining = students.filter(s => s._id !== selected._id);
         setStudents(remaining);
         setSelected(remaining[0] || null);
+        setConfirmStudent(false);
     };
 
     const handleDeletePayment = async (pid) => {
-        if (!window.confirm('Delete this payment record?')) return;
         await api.delete(`/students/${selected._id}/payments/${pid}`);
+        setConfirmPaymentId(null);
         fetchStudents();
     };
 
     const afterModal = () => { setModal(null); fetchStudents(); };
+
+    const handleSendReminder = async () => {
+        if (!selected) return;
+        setReminderLoading(true);
+        setReminderResult(null);
+        try {
+            const { data } = await api.post(`/notifications/send-reminder/${selected._id}`);
+            setReminderResult({ ok: true, message: data.message || 'WhatsApp reminder sent!' });
+        } catch (err) {
+            const msg = err.response?.data?.message || 'Failed to send reminder.';
+            setReminderResult({ ok: false, message: msg });
+        } finally {
+            setReminderLoading(false);
+            // Auto-clear result banner after 5s
+            setTimeout(() => setReminderResult(null), 5000);
+        }
+    };
 
     const filtered = students.filter(s => {
         const matchSearch = s.name.toLowerCase().includes(search.toLowerCase()) || s.roomNumber.includes(search);
@@ -460,9 +514,12 @@ export default function Payments() {
                     <StudentDetail
                         student={selected}
                         onAddPayment={() => setModal('addPayment')}
-                        onDeletePayment={handleDeletePayment}
+                        onDeletePayment={(pid) => setConfirmPaymentId(pid)}
                         onEdit={() => setModal('editStudent')}
-                        onDelete={handleDeleteStudent}
+                        onDelete={() => setConfirmStudent(true)}
+                        onSendReminder={handleSendReminder}
+                        reminderLoading={reminderLoading}
+                        reminderResult={reminderResult}
                     />
                 ) : (
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', height: 300, flexDirection: 'column', gap: 12, color: 'var(--text-muted)' }}>
@@ -479,6 +536,30 @@ export default function Payments() {
                 {modal === 'editStudent' && selected && <StudentModal editData={selected} onClose={() => setModal(null)} onSaved={afterModal} />}
                 {modal === 'addPayment' && selected && <AddPaymentModal student={selected} onClose={() => setModal(null)} onSaved={afterModal} />}
             </AnimatePresence>
+
+            {/* Confirm — Remove Student */}
+            <ConfirmModal
+                open={confirmStudent}
+                icon="🗑"
+                title="Remove Student?"
+                message={selected ? `This will permanently remove ${selected.name} from the system, including all payment records.` : ''}
+                confirmText="Yes, Remove"
+                cancelText="Cancel"
+                onConfirm={handleDeleteStudent}
+                onCancel={() => setConfirmStudent(false)}
+            />
+
+            {/* Confirm — Delete Payment */}
+            <ConfirmModal
+                open={!!confirmPaymentId}
+                icon="🧾"
+                title="Delete Payment Record?"
+                message="This payment record will be permanently deleted."
+                confirmText="Delete"
+                cancelText="Cancel"
+                onConfirm={() => handleDeletePayment(confirmPaymentId)}
+                onCancel={() => setConfirmPaymentId(null)}
+            />
         </div >
     );
 }

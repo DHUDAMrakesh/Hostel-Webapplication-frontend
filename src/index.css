@@ -889,3 +889,54 @@ body::after {
 .recharts-cartesian-grid-vertical line {
   stroke: rgba(0, 0, 0, 0.06) !important;
 }
+
+/* ─── Performance & Smoothness ─── */
+html {
+  scroll-behavior: smooth;
+  scrollbar-gutter: stable;
+  /* prevents layout shift when scrollbar appears */
+}
+
+/* Hardware-accelerated interactive surfaces */
+.card,
+.nav-btn,
+.avatar,
+.action-btn {
+  will-change: transform;
+  transform: translateZ(0);
+  /* promote to GPU layer */
+  backface-visibility: hidden;
+}
+
+/* Skeleton shimmer animation */
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Smooth page-content scroll on all scroll containers */
+.page-content,
+.sidebar-nav {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  /* momentum scroll on iOS */
+}
+
+/* Focus ring for accessibility without jank */
+:focus-visible {
+  outline: 2px solid var(--brand-indigo);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Prevent text selection flicker on interactive elements */
+button,
+.nav-btn,
+.card {
+  user-select: none;
+}
