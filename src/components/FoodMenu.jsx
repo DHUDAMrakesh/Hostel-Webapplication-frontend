@@ -3,6 +3,7 @@ import api from '../utils/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import ConfirmModal from './ConfirmModal';
 
 const API = '';
 
@@ -307,6 +308,7 @@ export default function FoodMenu() {
     const [selected, setSelected] = useState(null);
     const [modal, setModal] = useState(null);
     const [deleting, setDeleting] = useState(null);
+    const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
     const fetchMenu = async () => {
         try {
@@ -329,7 +331,6 @@ export default function FoodMenu() {
     useEffect(() => { fetchMenu(); }, []);
 
     const handleDelete = async (id) => {
-        if (!window.confirm('Delete this day from the menu?')) return;
         setDeleting(id);
         try {
             await api.delete(`/menu/${id}`);
@@ -337,9 +338,10 @@ export default function FoodMenu() {
             setMenu(newMenu);
             if (selected?._id === id) setSelected(newMenu[0] || null);
         } catch {
-            alert('Delete failed.');
+            // silently fail
         } finally {
             setDeleting(null);
+            setConfirmDeleteId(null);
         }
     };
 
@@ -402,15 +404,35 @@ export default function FoodMenu() {
                     {/* Day Selector */}
                     <div className="day-selector">
                         {menu.map((day) => (
-                            <motion.button
+                            <div
                                 key={day._id}
-                                className={`day-btn${selected?._id === day._id ? ' active' : ''}`}
-                                onClick={() => setSelected(day)}
-                                whileHover={{ x: 2 }}
+                                style={{ display: 'flex', alignItems: 'center', gap: 4 }}
                             >
-                                <span>{day.day}</span>
-                                {selected?._id === day._id && <span style={{ color: '#4f46e5' }}>›</span>}
-                            </motion.button>
+                                <motion.button
+                                    className={`day-btn${selected?._id === day._id ? ' active' : ''}`}
+                                    onClick={() => setSelected(day)}
+                                    whileHover={{ x: 2 }}
+                                    style={{ flex: 1 }}
+                                >
+                                    <span>{day.day}</span>
+                                    {selected?._id === day._id && <span style={{ color: '#4f46e5' }}>›</span>}
+                                </motion.button>
+                                {!isStudent && (
+                                    <>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); setModal(day); }}
+                                            title="Edit"
+                                            style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid rgba(79,70,229,0.25)', background: 'rgba(79,70,229,0.07)', color: '#4f46e5', fontSize: 12, cursor: 'pointer', flexShrink: 0 }}
+                                        >✎</button>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(day._id); }}
+                                            title="Delete"
+                                            disabled={deleting === day._id}
+                                            style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid rgba(225,29,72,0.25)', background: 'rgba(225,29,72,0.07)', color: '#e11d48', fontSize: 12, cursor: 'pointer', flexShrink: 0, opacity: deleting === day._id ? 0.5 : 1 }}
+                                        >{deleting === day._id ? '…' : '🗑'}</button>
+                                    </>
+                                )}
+                            </div>
                         ))}
                     </div>
 
@@ -460,16 +482,30 @@ export default function FoodMenu() {
 
             {/* Modal — admin/manager only */}
             {!isStudent && (
-                <AnimatePresence>
-                    {modal && (
-                        <DayModal
-                            editData={modal === 'add' ? null : modal}
-                            existingDays={menu.map(d => d.day)}
-                            onClose={() => setModal(null)}
-                            onSave={afterSave}
-                        />
-                    )}
-                </AnimatePresence>
+                <>
+                    <AnimatePresence>
+                        {modal && (
+                            <DayModal
+                                editData={modal === 'add' ? null : modal}
+                                existingDays={menu.map(d => d.day)}
+                                onClose={() => setModal(null)}
+                                onSave={afterSave}
+                            />
+                        )}
+                    </AnimatePresence>
+
+                    {/* Delete Day Confirmation */}
+                    <ConfirmModal
+                        open={!!confirmDeleteId}
+                        icon="🗓"
+                        title="Delete Menu Day?"
+                        message="This day will be permanently removed from the weekly menu."
+                        confirmText="Delete Day"
+                        cancelText="Cancel"
+                        onConfirm={() => handleDelete(confirmDeleteId)}
+                        onCancel={() => setConfirmDeleteId(null)}
+                    />
+                </>
             )}
         </div>
     );

@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import api from '../utils/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../context/LanguageContext';
+import ConfirmModal from './ConfirmModal';
+import useDebounce from '../hooks/useDebounce';
 
 const API = '';
 
@@ -16,8 +18,9 @@ function StudentModal({ editData, onClose, onSaved }) {
     const [form, setForm] = useState(isEdit ? {
         name: editData.name, roomNumber: editData.roomNumber || '',
         email: editData.email || '', phone: editData.phone || '',
+        guardianName: editData.guardianName || '', emergencyContact: editData.emergencyContact || '',
         feeDues: editData.feeDues || 0, monthlyFee: editData.monthlyFee || 5000,
-    } : { name: '', email: '', phone: '' });
+    } : { name: '', email: '', phone: '', guardianName: '', emergencyContact: '' });
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
 
@@ -99,6 +102,14 @@ function StudentModal({ editData, onClose, onSaved }) {
                             <label style={lbl}>Phone</label>
                             <input value={form.phone} onChange={set('phone')} onFocus={focusInp} onBlur={blurInp} placeholder="+91 XXXXX XXXXX" style={inp} />
                         </div>
+                        <div>
+                            <label style={lbl}>Guardian Name</label>
+                            <input value={form.guardianName} onChange={set('guardianName')} onFocus={focusInp} onBlur={blurInp} placeholder="Parent/Guardian" style={inp} />
+                        </div>
+                        <div>
+                            <label style={lbl}>Emergency Contact</label>
+                            <input value={form.emergencyContact} onChange={set('emergencyContact')} onFocus={focusInp} onBlur={blurInp} placeholder="Emergency Phone" style={inp} />
+                        </div>
 
                         {/* Extra fields for editing existing student */}
                         {isEdit && (<>
@@ -147,13 +158,13 @@ function StudentModal({ editData, onClose, onSaved }) {
 }
 
 /* ─── Student Card ─── */
-function StudentCard({ student, onEdit, onDelete, delay }) {
+function StudentCard({ student, onEdit, onDelete, onDeleteRequest, delay }) {
     const [deleting, setDeleting] = useState(false);
 
     const handleDelete = async () => {
-        if (!window.confirm(`Remove ${student.name}?`)) return;
         setDeleting(true);
         await onDelete(student._id);
+        setDeleting(false);
     };
 
     const dueColor = student.feeDues > 0 ? '#e11d48' : '#059669';
@@ -186,7 +197,7 @@ function StudentCard({ student, onEdit, onDelete, delay }) {
                         title="Edit"
                     >✎</button>
                     <button
-                        onClick={handleDelete}
+                        onClick={() => onDeleteRequest(student)}
                         disabled={deleting}
                         style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid rgba(225,29,72,0.25)', background: 'rgba(225,29,72,0.07)', color: '#e11d48', fontSize: 13, cursor: 'pointer', lineHeight: 1, opacity: deleting ? 0.5 : 1 }}
                         title="Remove"
@@ -202,8 +213,18 @@ function StudentCard({ student, onEdit, onDelete, delay }) {
                     </div>
                 )}
                 {student.phone && (
-                    <div style={{ gridColumn: '1/-1', fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5 }}>
                         <span>📞</span> {student.phone}
+                    </div>
+                )}
+                {student.guardianName && (
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <span>🛡️</span> {student.guardianName}
+                    </div>
+                )}
+                {student.emergencyContact && (
+                    <div style={{ gridColumn: '1/-1', fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <span>🚨</span> Emergency: {student.emergencyContact}
                     </div>
                 )}
                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
@@ -238,9 +259,11 @@ export default function Students() {
     const [loading, setLoading] = useState(true);
     const [modal, setModal] = useState(null); // null | 'add' | { ...editData }
     const [search, setSearch] = useState('');
+    const debouncedSearch = useDebounce(search, 300);
     const [filterStatus, setFilterStatus] = useState('All');
     const [sortBy, setSortBy] = useState('name'); // 'name' | 'dues' | 'room'
     const [toast, setToast] = useState(null); // { msg, type }
+    const [confirmTarget, setConfirmTarget] = useState(null); // student to delete
 
     const showToast = (msg, type = 'success') => {
         setToast({ msg, type });
@@ -268,10 +291,10 @@ export default function Students() {
         if (email) showToast(`✓ Student added — credentials sent to ${email}`);
     };
 
-    // Filter + sort
-    const filtered = students
+    // Filter + sort (memoized — only recomputes when deps change)
+    const filtered = useMemo(() => students
         .filter(s => {
-            const q = search.toLowerCase();
+            const q = debouncedSearch.toLowerCase();
             const matchSearch = s.name.toLowerCase().includes(q) || s.roomNumber.includes(q) || (s.email || '').toLowerCase().includes(q);
             const matchStatus = filterStatus === 'All' ||
                 (filterStatus === 'Dues' && s.feeDues > 0) ||
@@ -282,7 +305,8 @@ export default function Students() {
             if (sortBy === 'dues') return b.feeDues - a.feeDues;
             if (sortBy === 'room') return a.roomNumber.localeCompare(b.roomNumber);
             return a.name.localeCompare(b.name);
-        });
+        })
+        , [students, debouncedSearch, filterStatus, sortBy]);
 
     const totalDues = students.reduce((acc, s) => acc + (s.feeDues || 0), 0);
     const withDues = students.filter(s => s.feeDues > 0).length;
@@ -390,6 +414,7 @@ export default function Students() {
                                 delay={i * 0.05}
                                 onEdit={student => setModal(student)}
                                 onDelete={handleDelete}
+                                onDeleteRequest={student => setConfirmTarget(student)}
                             />
                         ))}
                     </div>
@@ -406,6 +431,21 @@ export default function Students() {
                     />
                 )}
             </AnimatePresence>
+
+            {/* Delete Confirmation */}
+            <ConfirmModal
+                open={!!confirmTarget}
+                icon="🗑"
+                title="Remove Student?"
+                message={confirmTarget ? `This will permanently remove ${confirmTarget.name} from the hostel records.` : ''}
+                confirmText="Yes, Remove"
+                cancelText="Cancel"
+                onConfirm={async () => {
+                    if (confirmTarget) await handleDelete(confirmTarget._id);
+                    setConfirmTarget(null);
+                }}
+                onCancel={() => setConfirmTarget(null)}
+            />
 
             {/* Toast */}
             <AnimatePresence>
