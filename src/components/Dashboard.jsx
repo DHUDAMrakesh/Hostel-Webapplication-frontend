@@ -29,10 +29,10 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 const cardConfigs = [
-    { key: 'totalBeds', label: 'Total Beds', icon: '🛏', glow: '#6366f1', iconBg: 'linear-gradient(135deg,#6366f1,#8b5cf6)', badge: 'up', change: 'Full capacity' },
-    { key: 'occupiedBeds', label: 'Occupied', icon: '👥', glow: '#06b6d4', iconBg: 'linear-gradient(135deg,#0ea5e9,#06b6d4)', badge: 'up', change: '+2 this week' },
-    { key: 'availableBeds', label: 'Available', icon: '🏠', glow: '#10b981', iconBg: 'linear-gradient(135deg,#10b981,#14b8a6)', badge: 'down', change: 'Low stock' },
-    { key: 'feeDues', label: 'Outstanding Dues', icon: '₹', glow: '#f43f5e', iconBg: 'linear-gradient(135deg,#f43f5e,#ec4899)', badge: 'up', change: '-5% vs last mo' },
+    { key: 'totalBeds', label: 'Total Beds', icon: '🛏', glow: '#6366f1', iconBg: 'linear-gradient(135deg,#6366f1,#8b5cf6)', accent: 'linear-gradient(180deg,#6366f1,#8b5cf6)', badge: 'up', change: 'Full capacity' },
+    { key: 'occupiedBeds', label: 'Occupied', icon: '👥', glow: '#06b6d4', iconBg: 'linear-gradient(135deg,#0ea5e9,#06b6d4)', accent: 'linear-gradient(180deg,#0ea5e9,#06b6d4)', badge: 'up', change: '+2 this week' },
+    { key: 'availableBeds', label: 'Available', icon: '🏠', glow: '#10b981', iconBg: 'linear-gradient(135deg,#10b981,#14b8a6)', accent: 'linear-gradient(180deg,#10b981,#14b8a6)', badge: 'down', change: 'Low stock' },
+    { key: 'feeDues', label: 'Outstanding Dues', icon: '₹', glow: '#f43f5e', iconBg: 'linear-gradient(135deg,#f43f5e,#ec4899)', accent: 'linear-gradient(180deg,#f43f5e,#ec4899)', badge: 'up', change: '-5% vs last mo' },
 ];
 
 // ─── Add Student Modal ────────────────────────────────────────────────────────
@@ -362,13 +362,37 @@ export default function Dashboard() {
         },
     ];
 
+    const now = new Date();
+    const hour = now.getHours();
+    const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+    const userName = user?.name || 'Admin';
+
     return (
         <div className="dashboard">
-            {/* Header */}
-            <motion.div className="page-header" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-                <div className="page-label">{t('Overview')}</div>
-                <div className="page-title">{t('Dashboard')}</div>
-                <div className="page-desc">{t('Real-time hostel performance metrics.')}</div>
+            {/* Premium Hero Banner */}
+            <motion.div className="page-hero" initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
+                <div style={{ position: 'relative', zIndex: 2 }}>
+                    <div className="hero-badge">
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#a5f3fc', boxShadow: '0 0 8px #a5f3fc' }} />
+                        Live Dashboard
+                    </div>
+                    <div className="hero-title">{greeting}, {userName.split(' ')[0]} 👋</div>
+                    <div className="hero-sub" style={{ marginBottom: 16 }}>Here's your hostel performance at a glance — {now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', background: 'rgba(255,255,255,0.15)', borderRadius: 99, fontSize: 13, fontWeight: 600, backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.2)' }}>
+                            🏠 {stats.occupiedBeds}/{stats.totalBeds} rooms occupied
+                        </div>
+                        {stats.feeDues > 0 && (
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', background: 'rgba(239,68,68,0.25)', borderRadius: 99, fontSize: 13, fontWeight: 600, backdropFilter: 'blur(8px)', border: '1px solid rgba(239,68,68,0.3)' }}>
+                                ⚠ ₹{Number(stats.feeDues).toLocaleString('en-IN')} outstanding
+                            </div>
+                        )}
+                    </div>
+                </div>
+                {/* Decorative large number */}
+                <div style={{ position: 'absolute', right: 32, top: '50%', transform: 'translateY(-50%)', fontSize: 80, fontWeight: 900, opacity: 0.08, letterSpacing: -4, userSelect: 'none', pointerEvents: 'none', lineHeight: 1 }}>
+                    {occupancyPct}%
+                </div>
             </motion.div>
 
             {/* Stat Cards */}
@@ -379,18 +403,19 @@ export default function Dashboard() {
                         className="card stat-card"
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.08 }}
-                        whileHover={{ scale: 1.02 }}
+                        transition={{ delay: i * 0.07 }}
+                        whileHover={{ scale: 1.025, y: -2 }}
+                        style={{ '--stat-accent': c.accent }}
                     >
                         <div className="stat-glow" style={{ background: c.glow }} />
                         <div className="stat-card-top">
-                            <div className="stat-icon" style={{ background: c.iconBg }}>
+                            <div className="stat-icon" style={{ background: c.iconBg, boxShadow: `0 6px 20px ${c.glow}55` }}>
                                 <span style={{ fontSize: 20, color: 'white' }}>{c.icon}</span>
                             </div>
                             <span className={`stat-badge ${c.badge}`}>{c.change}</span>
                         </div>
                         <div className="stat-label">{t(c.label)}</div>
-                        <div className="stat-value">{formatValue(c.key, stats[c.key])}</div>
+                        <div className="stat-value" style={{ color: 'var(--text-primary)' }}>{formatValue(c.key, stats[c.key])}</div>
                     </motion.div>
                 ))}
             </div>

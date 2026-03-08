@@ -4,7 +4,23 @@ import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 
-export default function NotificationCenter() {
+const TYPE_CFG = {
+    complaint: { color: '#d97706', bg: 'rgba(217,119,6,0.12)', icon: '💬' },
+    payment: { color: '#059669', bg: 'rgba(5,150,105,0.12)', icon: '💳' },
+    room: { color: '#0891b2', bg: 'rgba(8,145,178,0.12)', icon: '🏠' },
+    system: { color: '#6366f1', bg: 'rgba(99,102,241,0.12)', icon: '⚙' },
+    default: { color: '#6366f1', bg: 'rgba(99,102,241,0.12)', icon: '🔔' },
+};
+
+function timeAgo(date) {
+    const sec = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
+    if (sec < 60) return 'Just now';
+    if (sec < 3600) return `${Math.floor(sec / 60)}m ago`;
+    if (sec < 86400) return `${Math.floor(sec / 3600)}h ago`;
+    return `${Math.floor(sec / 86400)}d ago`;
+}
+
+export default function NotificationCenter({ accentColor }) {
     const { user } = useAuth();
     const navigate = useNavigate();
     const [notifications, setNotifications] = useState([]);
@@ -24,7 +40,7 @@ export default function NotificationCenter() {
 
     useEffect(() => {
         fetchNotifications();
-        const interval = setInterval(fetchNotifications, 30000); // Poll every 30s
+        const interval = setInterval(fetchNotifications, 30000);
         return () => clearInterval(interval);
     }, []);
 
@@ -64,7 +80,6 @@ export default function NotificationCenter() {
         }
         setIsOpen(false);
         if (notification.link) {
-            // Adjust link to include role prefix if needed
             const targetLink = notification.link.startsWith(`/${user.role}`)
                 ? notification.link
                 : `/${user.role}${notification.link.startsWith('/') ? '' : '/'}${notification.link}`;
@@ -73,128 +88,158 @@ export default function NotificationCenter() {
     };
 
     return (
-        <div className="notification-center" style={{ position: 'relative' }} ref={dropdownRef}>
+        <div style={{ position: 'relative' }} ref={dropdownRef}>
+            {/* Bell button */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    position: 'relative',
-                    padding: 8,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'var(--text-primary)'
+                    width: 36, height: 36, borderRadius: 10,
+                    background: isOpen ? 'rgba(99,102,241,0.12)' : 'var(--bg-elevated)',
+                    border: `1px solid ${isOpen ? 'rgba(99,102,241,0.3)' : 'var(--border-subtle)'}`,
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: isOpen ? '#6366f1' : 'var(--text-secondary)',
+                    position: 'relative', transition: 'all 0.2s',
                 }}
             >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
                 </svg>
-                {unreadCount > 0 && (
-                    <span style={{
-                        position: 'absolute',
-                        top: 4,
-                        right: 4,
-                        background: '#ef4444',
-                        color: 'white',
-                        fontSize: 10,
-                        fontWeight: 'bold',
-                        borderRadius: '50%',
-                        width: 16,
-                        height: 16,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        border: '2px solid var(--bg-surface)'
-                    }}>
-                        {unreadCount > 9 ? '9+' : unreadCount}
-                    </span>
-                )}
+
+                {/* Unread badge */}
+                <AnimatePresence>
+                    {unreadCount > 0 && (
+                        <motion.span
+                            initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
+                            style={{
+                                position: 'absolute', top: -4, right: -4,
+                                background: 'linear-gradient(135deg, #e11d48, #f43f5e)',
+                                color: 'white', fontSize: 9, fontWeight: 800,
+                                borderRadius: '50%', width: 17, height: 17,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                border: '2px solid var(--bg-base)',
+                                boxShadow: '0 0 8px rgba(225,29,72,0.5)',
+                            }}
+                        >
+                            {unreadCount > 9 ? '9+' : unreadCount}
+                        </motion.span>
+                    )}
+                </AnimatePresence>
             </button>
 
+            {/* Dropdown */}
             <AnimatePresence>
                 {isOpen && (
                     <motion.div
-                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        initial={{ opacity: 0, y: 8, scale: 0.96 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        transition={{ duration: 0.2 }}
+                        exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                        transition={{ duration: 0.18 }}
                         style={{
-                            position: 'absolute',
-                            top: '100%',
-                            right: 0,
-                            marginTop: 10,
-                            width: 320,
-                            maxHeight: 400,
+                            position: 'absolute', top: 'calc(100% + 10px)', right: 0,
+                            width: 340, maxHeight: 440,
                             background: 'var(--bg-surface)',
-                            border: '1px solid var(--border-subtle)',
-                            borderRadius: 12,
-                            boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
-                            zIndex: 1000,
-                            overflow: 'hidden',
-                            display: 'flex',
-                            flexDirection: 'column'
+                            border: '1px solid var(--border-default)',
+                            borderRadius: 16,
+                            boxShadow: '0 20px 60px rgba(0,0,0,0.18), 0 4px 16px rgba(0,0,0,0.08)',
+                            zIndex: 1000, overflow: 'hidden', display: 'flex', flexDirection: 'column',
                         }}
                     >
-                        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontWeight: 600, fontSize: 14 }}>Notifications</span>
+                        {/* Header */}
+                        <div style={{
+                            padding: '14px 18px 12px',
+                            borderBottom: '1px solid var(--border-subtle)',
+                            background: 'linear-gradient(to bottom, var(--bg-elevated), var(--bg-surface))',
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        }}>
+                            <div>
+                                <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>Notifications</div>
+                                {unreadCount > 0 && (
+                                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
+                                        {unreadCount} unread
+                                    </div>
+                                )}
+                            </div>
                             {unreadCount > 0 && (
                                 <button
                                     onClick={markAllAsRead}
-                                    style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 12, cursor: 'pointer', padding: 0 }}
+                                    style={{
+                                        background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)',
+                                        color: '#6366f1', fontSize: 11.5, fontWeight: 600,
+                                        cursor: 'pointer', padding: '5px 10px', borderRadius: 8,
+                                        fontFamily: "'Inter', sans-serif", transition: 'all 0.15s',
+                                    }}
                                 >
-                                    Mark all as read
+                                    Mark all read
                                 </button>
                             )}
                         </div>
 
-                        <div style={{ overflowY: 'auto', flex: 1, padding: 8 }}>
+                        {/* List */}
+                        <div style={{ overflowY: 'auto', flex: 1 }}>
                             {notifications.length === 0 ? (
-                                <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-                                    No notifications yet
+                                <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                    <div style={{ fontSize: 36, marginBottom: 10, opacity: 0.5 }}>🔔</div>
+                                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>All caught up!</div>
+                                    <div style={{ fontSize: 12 }}>No notifications yet</div>
                                 </div>
                             ) : (
-                                notifications.map(n => (
-                                    <div
-                                        key={n._id}
-                                        onClick={() => handleNotificationClick(n)}
-                                        style={{
-                                            padding: 12,
-                                            borderRadius: 8,
-                                            cursor: 'pointer',
-                                            background: n.isRead ? 'transparent' : 'var(--bg-elevated)',
-                                            marginBottom: 4,
-                                            transition: 'background 0.2s',
-                                            position: 'relative'
-                                        }}
-                                        className="notification-item"
-                                    >
-                                        {!n.isRead && (
-                                            <div style={{ position: 'absolute', left: 4, top: 16, width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)' }} />
-                                        )}
-                                        <div style={{ fontWeight: n.isRead ? 400 : 600, fontSize: 13, marginBottom: 2, paddingLeft: 8 }}>
-                                            {n.title}
-                                        </div>
-                                        <div style={{ fontSize: 12, color: 'var(--text-muted)', paddingLeft: 8, lineHeight: 1.4 }}>
-                                            {n.message}
-                                        </div>
-                                        <div style={{ fontSize: 10, color: 'var(--text-muted)', paddingLeft: 8, marginTop: 4 }}>
-                                            {new Date(n.createdAt).toLocaleString()}
-                                        </div>
-                                    </div>
-                                ))
+                                notifications.map((n, i) => {
+                                    const type = n.type || 'default';
+                                    const cfg = TYPE_CFG[type] || TYPE_CFG.default;
+                                    return (
+                                        <motion.div
+                                            key={n._id}
+                                            initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
+                                            onClick={() => handleNotificationClick(n)}
+                                            style={{
+                                                padding: '12px 16px',
+                                                cursor: 'pointer',
+                                                background: n.isRead ? 'transparent' : cfg.bg,
+                                                borderBottom: '1px solid var(--border-subtle)',
+                                                display: 'flex', alignItems: 'flex-start', gap: 12,
+                                                transition: 'background 0.2s',
+                                                borderLeft: n.isRead ? 'none' : `3px solid ${cfg.color}`,
+                                            }}
+                                            whileHover={{ background: 'var(--bg-elevated)' }}
+                                        >
+                                            {/* Icon */}
+                                            <div style={{
+                                                width: 34, height: 34, borderRadius: 10, flexShrink: 0,
+                                                background: cfg.bg, border: `1px solid ${cfg.color}30`,
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                fontSize: 16,
+                                            }}>
+                                                {cfg.icon}
+                                            </div>
+
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{
+                                                    fontWeight: n.isRead ? 500 : 700, fontSize: 13,
+                                                    color: 'var(--text-primary)', lineHeight: 1.35,
+                                                    marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis',
+                                                }}>
+                                                    {n.title}
+                                                </div>
+                                                <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 4 }}>
+                                                    {n.message}
+                                                </div>
+                                                <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
+                                                    {timeAgo(n.createdAt)}
+                                                </div>
+                                            </div>
+
+                                            {!n.isRead && (
+                                                <div style={{ width: 7, height: 7, borderRadius: '50%', background: cfg.color, boxShadow: `0 0 6px ${cfg.color}`, flexShrink: 0, marginTop: 5 }} />
+                                            )}
+                                        </motion.div>
+                                    );
+                                })
                             )}
                         </div>
                     </motion.div>
                 )}
             </AnimatePresence>
-            <style>{`
-                .notification-item:hover {
-                    background: var(--bg-elevated) !important;
-                }
-            `}</style>
         </div>
     );
 }

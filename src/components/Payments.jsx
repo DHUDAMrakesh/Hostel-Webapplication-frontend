@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../utils/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 import ConfirmModal from './ConfirmModal';
 
 const API = '';
@@ -32,9 +33,12 @@ const Badge = ({ status }) => {
 };
 
 /* ─── Add Payment Modal ─── */
-function AddPaymentModal({ student, onClose, onSaved }) {
+function AddPaymentModal({ student, students, onClose, onSaved }) {
+    const [selectedStudentId, setSelectedStudentId] = useState(student?._id || '');
+    const defaultAmount = student ? student.monthlyFee : 5000;
+
     const [form, setForm] = useState({
-        amount: student.monthlyFee || 5000,
+        amount: defaultAmount || 5000,
         month: `${MONTHS[new Date().getMonth()]} ${curYear}`,
         method: 'Cash',
         status: 'Paid',
@@ -46,10 +50,11 @@ function AddPaymentModal({ student, onClose, onSaved }) {
     const set = k => v => setForm(p => ({ ...p, [k]: v }));
 
     const handleSave = async () => {
+        if (!selectedStudentId) { setError('Please select a student.'); return; }
         if (!form.amount || form.amount <= 0) { setError('Enter a valid amount.'); return; }
         setSaving(true);
         try {
-            await api.post(`/students/${student._id}/payments`, form);
+            await api.post(`/students/${selectedStudentId}/payments`, form);
             onSaved();
         } catch (e) {
             setError(e.response?.data?.message || 'Failed to save.');
@@ -86,12 +91,28 @@ function AddPaymentModal({ student, onClose, onSaved }) {
                 <div style={{ padding: '20px 24px 18px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                     <div>
                         <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>New Transaction</div>
-                        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginTop: 2 }}>Add Payment — {student.name}</div>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginTop: 2 }}>{student ? `Add Payment — ${student.name}` : `Add Payment`}</div>
                     </div>
                     <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: 15, cursor: 'pointer' }}>✕</button>
                 </div>
 
                 <div style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    {!student && (
+                        <div>
+                            <label style={labelStyle}>Select Student</label>
+                            <select value={selectedStudentId} onChange={e => {
+                                const st = students.find(s => s._id === e.target.value);
+                                setSelectedStudentId(e.target.value);
+                                if (st && st.monthlyFee) set('amount')(st.monthlyFee);
+                            }} style={{ ...inputStyle, cursor: 'pointer' }}>
+                                <option value="">— Select a student —</option>
+                                {students.map(s => (
+                                    <option key={s._id} value={s._id}>{s.name} (Room {s.roomNumber})</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                         <div>
                             <label style={labelStyle}>Amount (₹)</label>
@@ -106,7 +127,7 @@ function AddPaymentModal({ student, onClose, onSaved }) {
                         <div>
                             <label style={labelStyle}>Payment Method</label>
                             <select value={form.method} onChange={e => set('method')(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
-                                {METHODS.map(m => <option key={m}>{m}</option>)}
+                                {['Cash', 'UPI', 'Bank Transfer', 'Card', 'Refund'].map(m => <option key={m}>{m}</option>)}
                             </select>
                         </div>
                         <div>
@@ -127,6 +148,79 @@ function AddPaymentModal({ student, onClose, onSaved }) {
                     <button onClick={onClose} style={{ padding: '9px 20px', borderRadius: 10, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: 14, fontWeight: 600, fontFamily: 'Outfit, sans-serif', cursor: 'pointer' }}>Cancel</button>
                     <button onClick={handleSave} disabled={saving} style={{ padding: '9px 22px', borderRadius: 10, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', fontSize: 14, fontWeight: 600, fontFamily: 'Outfit, sans-serif', opacity: saving ? 0.7 : 1, boxShadow: '0 4px 14px rgba(79,70,229,0.3)' }}>
                         {saving ? 'Saving…' : '+ Add Payment'}
+                    </button>
+                </div>
+            </motion.div>
+        </div>
+    );
+}
+
+/* ─── Edit Payment Modal ─── */
+function EditPaymentModal({ student, editData, onClose, onSaved }) {
+    const [form, setForm] = useState(editData);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState('');
+
+    const set = k => v => setForm(p => ({ ...p, [k]: v }));
+
+    const handleSave = async () => {
+        if (!form.amount || form.amount === '') { setError('Enter a valid amount.'); return; }
+        setSaving(true);
+        try {
+            await api.put(`/students/${student._id}/payments/${editData._id}`, form);
+            onSaved();
+        } catch (e) {
+            setError(e.response?.data?.message || 'Failed to save.');
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} style={{ width: '100%', maxWidth: 440, background: 'var(--bg-base)', borderRadius: 24, overflow: 'hidden', boxShadow: '0 24px 50px rgba(0,0,0,0.2), 0 0 0 1px var(--border-subtle)' }}>
+                <div style={{ padding: '20px 24px 18px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                    <div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Correct Record</div>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginTop: 2 }}>Edit Payment — {student.name}</div>
+                    </div>
+                    <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: 15, cursor: 'pointer' }}>✕</button>
+                </div>
+                <div style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <div>
+                            <label style={labelStyle}>Amount (₹)</label>
+                            <input type="number" value={form.amount} onChange={e => set('amount')(e.target.value)} style={inputStyle} />
+                        </div>
+                        <div>
+                            <label style={labelStyle}>For Month</label>
+                            <select value={form.month} onChange={e => set('month')(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+                                {MONTH_OPTIONS.map(m => <option key={m}>{m}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label style={labelStyle}>Payment Method</label>
+                            <select value={form.method} onChange={e => set('method')(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+                                {['Cash', 'UPI', 'Bank Transfer', 'Card', 'Refund'].map(m => <option key={m}>{m}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label style={labelStyle}>Status</label>
+                            <select value={form.status} onChange={e => set('status')(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+                                {STATUSES.map(s => <option key={s}>{s}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label style={labelStyle}>Note (optional)</label>
+                        <input type="text" placeholder="e.g. Corrected amount, late fee..." value={form.note} onChange={e => set('note')(e.target.value)} style={inputStyle} />
+                    </div>
+                    {error && <div style={{ padding: '9px 12px', background: 'rgba(225,29,72,0.08)', border: '1px solid rgba(225,29,72,0.2)', borderRadius: 8, fontSize: 13, color: '#e11d48' }}>⚠ {error}</div>}
+                </div>
+
+                <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                    <button onClick={onClose} style={{ padding: '9px 20px', borderRadius: 10, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: 14, fontWeight: 600, fontFamily: 'Outfit, sans-serif', cursor: 'pointer' }}>Cancel</button>
+                    <button onClick={handleSave} disabled={saving} style={{ padding: '9px 22px', borderRadius: 10, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', fontSize: 14, fontWeight: 600, fontFamily: 'Outfit, sans-serif', opacity: saving ? 0.7 : 1, boxShadow: '0 4px 14px rgba(16,185,129,0.3)' }}>
+                        {saving ? 'Saving…' : 'Save Changes'}
                     </button>
                 </div>
             </motion.div>
@@ -197,7 +291,7 @@ function StudentModal({ editData, onClose, onSaved }) {
 }
 
 /* ─── Student Detail Panel ─── */
-function StudentDetail({ student, onAddPayment, onDeletePayment, onEdit, onDelete, onSendReminder, reminderLoading, reminderResult }) {
+function StudentDetail({ student, onAddPayment, onDeletePayment, onEdit, onDelete, onSendReminder, reminderLoading, reminderResult, isAdmin, canManage }) {
     const totalPaid = student.payments.filter(p => p.status === 'Paid').reduce((a, p) => a + p.amount, 0);
 
     return (
@@ -233,9 +327,14 @@ function StudentDetail({ student, onAddPayment, onDeletePayment, onEdit, onDelet
                             </div>
                         </div>
                     </div>
+                    {/* Action buttons — admin only */}
                     <div style={{ display: 'flex', gap: 8 }}>
-                        <button onClick={onEdit} style={{ padding: '8px 16px', borderRadius: 9, border: '1px solid rgba(79,70,229,0.25)', background: 'rgba(79,70,229,0.07)', color: '#4f46e5', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit, sans-serif', cursor: 'pointer' }}>✎ Edit</button>
-                        <button onClick={onDelete} style={{ padding: '8px 16px', borderRadius: 9, border: '1px solid rgba(225,29,72,0.25)', background: 'rgba(225,29,72,0.07)', color: '#e11d48', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit, sans-serif', cursor: 'pointer' }}>🗑 Remove</button>
+                        {isAdmin && (
+                            <>
+                                <button onClick={onEdit} style={{ padding: '8px 16px', borderRadius: 9, border: '1px solid rgba(79,70,229,0.25)', background: 'rgba(79,70,229,0.07)', color: '#4f46e5', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit, sans-serif', cursor: 'pointer' }}>✎ Edit</button>
+                                <button onClick={onDelete} style={{ padding: '8px 16px', borderRadius: 9, border: '1px solid rgba(225,29,72,0.25)', background: 'rgba(225,29,72,0.07)', color: '#e11d48', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit, sans-serif', cursor: 'pointer' }}>🗑 Remove</button>
+                            </>
+                        )}
                     </div>
                 </div>
 
@@ -263,30 +362,34 @@ function StudentDetail({ student, onAddPayment, onDeletePayment, onEdit, onDelet
                             {student.payments.length} record{student.payments.length !== 1 && 's'}
                         </div>
                     </div>
-                    <motion.button
-                        whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
-                        onClick={onAddPayment}
-                        style={{ padding: '9px 18px', borderRadius: 10, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit, sans-serif', boxShadow: '0 4px 14px rgba(79,70,229,0.3)' }}
-                    >+ Add Payment</motion.button>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                        {canManage && (
+                            <motion.button
+                                whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+                                onClick={onAddPayment}
+                                style={{ padding: '9px 18px', borderRadius: 10, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit, sans-serif', boxShadow: '0 4px 14px rgba(79,70,229,0.3)' }}
+                            >+ Add Payment</motion.button>
+                        )}
 
-                    {/* WhatsApp Reminder button */}
-                    <motion.button
-                        whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
-                        onClick={onSendReminder}
-                        disabled={reminderLoading || !student.phone}
-                        title={!student.phone ? 'No phone number on record' : 'Send WhatsApp fee reminder to student'}
-                        style={{
-                            padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(37,211,102,0.35)',
-                            cursor: reminderLoading || !student.phone ? 'not-allowed' : 'pointer',
-                            background: 'rgba(37,211,102,0.1)', color: '#25d366',
-                            fontSize: 13, fontWeight: 600, fontFamily: 'Outfit, sans-serif',
-                            opacity: reminderLoading || !student.phone ? 0.6 : 1,
-                            display: 'flex', alignItems: 'center', gap: 6,
-                        }}
-                    >
-                        {reminderLoading ? '⏳ Sending…' : '📲 Remind'}
-                    </motion.button>
-                </div>
+                        {/* WhatsApp Reminder button */}
+                        <motion.button
+                            whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+                            onClick={onSendReminder}
+                            disabled={reminderLoading || !student.phone}
+                            title={!student.phone ? 'No phone number on record' : 'Send WhatsApp fee reminder to student'}
+                            style={{
+                                padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(37,211,102,0.35)',
+                                cursor: reminderLoading || !student.phone ? 'not-allowed' : 'pointer',
+                                background: 'rgba(37,211,102,0.1)', color: '#25d366',
+                                fontSize: 13, fontWeight: 600, fontFamily: 'Outfit, sans-serif',
+                                opacity: reminderLoading || !student.phone ? 0.6 : 1,
+                                display: 'flex', alignItems: 'center', gap: 6,
+                            }}
+                        >
+                            {reminderLoading ? '⏳ Sending…' : '📲 Remind'}
+                        </motion.button>
+                    </div>
+                </div>{/* end header flex row */}
 
                 {/* WhatsApp reminder result banner — auto-clears after 5s */}
                 {reminderResult && (
@@ -328,14 +431,23 @@ function StudentDetail({ student, onAddPayment, onDeletePayment, onEdit, onDelet
                                     </div>
                                 </div>
                                 <div style={{ fontSize: 16, fontWeight: 700, color: STATUS_STYLE[p.status]?.color || 'var(--text-primary)', flexShrink: 0 }}>
-                                    ₹{Number(p.amount).toLocaleString('en-IN')}
+                                    {p.amount < 0 ? '-' : ''}₹{Math.abs(Number(p.amount)).toLocaleString('en-IN')}
                                 </div>
                                 <Badge status={p.status} />
-                                <button
-                                    onClick={() => onDeletePayment(p._id)}
-                                    style={{ width: 26, height: 26, borderRadius: '50%', border: '1px solid rgba(225,29,72,0.2)', background: 'rgba(225,29,72,0.06)', color: '#e11d48', fontSize: 12, cursor: 'pointer', lineHeight: 1, flexShrink: 0 }}
-                                    title="Delete record"
-                                >🗑</button>
+                                {isAdmin && (
+                                    <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                                        <button
+                                            onClick={() => onEditPayment(p)}
+                                            style={{ width: 26, height: 26, borderRadius: '50%', border: '1px solid rgba(16,185,129,0.2)', background: 'rgba(16,185,129,0.06)', color: '#10b981', fontSize: 12, cursor: 'pointer', lineHeight: 1 }}
+                                            title="Correct payment"
+                                        >✎</button>
+                                        <button
+                                            onClick={() => onDeletePayment(p._id)}
+                                            style={{ width: 26, height: 26, borderRadius: '50%', border: '1px solid rgba(225,29,72,0.2)', background: 'rgba(225,29,72,0.06)', color: '#e11d48', fontSize: 12, cursor: 'pointer', lineHeight: 1 }}
+                                            title="Delete record"
+                                        >🗑</button>
+                                    </div>
+                                )}
                             </motion.div>
                         ))}
                     </div>
@@ -348,12 +460,17 @@ function StudentDetail({ student, onAddPayment, onDeletePayment, onEdit, onDelet
 /* ─── Main Component ─── */
 export default function Payments() {
     const { t } = useLanguage();
+    const { user } = useAuth();
+    const role = (user?.role || '').toLowerCase().trim();
+    const isAdmin = role === 'admin';
+    const canManage = role === 'admin' || role === 'manager';
     const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState(null);
     const [search, setSearch] = useState('');
     const [filterStatus, setFilterStatus] = useState('All');
     const [modal, setModal] = useState(null);
+    const [editPaymentData, setEditPaymentData] = useState(null);
     const [confirmStudent, setConfirmStudent] = useState(false);
     const [confirmPaymentId, setConfirmPaymentId] = useState(null);
     const [reminderLoading, setReminderLoading] = useState(false);
@@ -436,13 +553,28 @@ export default function Payments() {
                     </div>
                     <div className="page-desc">Track fees, dues and payment history for every student.</div>
                 </div>
-                <motion.button
-                    whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
-                    onClick={() => setModal('addStudent')}
-                    style={{ padding: '11px 20px', borderRadius: 12, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', fontSize: 14, fontWeight: 600, fontFamily: 'Outfit, sans-serif', boxShadow: '0 4px 18px rgba(79,70,229,0.35)', display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}
-                >
-                    <span style={{ fontSize: 18 }}>+</span> Add Student
-                </motion.button>
+                <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+                    {canManage && (
+                        <motion.button
+                            whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+                            onClick={() => {
+                                setModal('addPaymentGlobal');
+                            }}
+                            style={{ padding: '11px 20px', borderRadius: 12, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', fontSize: 14, fontWeight: 600, fontFamily: 'Outfit, sans-serif', boxShadow: '0 4px 18px rgba(16,185,129,0.3)', display: 'flex', alignItems: 'center', gap: 8 }}
+                        >
+                            <span style={{ fontSize: 18 }}>+</span> Add Payment
+                        </motion.button>
+                    )}
+                    {isAdmin && (
+                        <motion.button
+                            whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+                            onClick={() => setModal('addStudent')}
+                            style={{ padding: '11px 20px', borderRadius: 12, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', fontSize: 14, fontWeight: 600, fontFamily: 'Outfit, sans-serif', boxShadow: '0 4px 18px rgba(79,70,229,0.35)', display: 'flex', alignItems: 'center', gap: 8 }}
+                        >
+                            <span style={{ fontSize: 18 }}>+</span> Add Student
+                        </motion.button>
+                    )}
+                </div>
             </div>
 
             {/* Summary strip */}
@@ -520,6 +652,8 @@ export default function Payments() {
                         onSendReminder={handleSendReminder}
                         reminderLoading={reminderLoading}
                         reminderResult={reminderResult}
+                        isAdmin={isAdmin}
+                        canManage={canManage}
                     />
                 ) : (
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', height: 300, flexDirection: 'column', gap: 12, color: 'var(--text-muted)' }}>
@@ -534,7 +668,8 @@ export default function Payments() {
             <AnimatePresence>
                 {modal === 'addStudent' && <StudentModal onClose={() => setModal(null)} onSaved={afterModal} />}
                 {modal === 'editStudent' && selected && <StudentModal editData={selected} onClose={() => setModal(null)} onSaved={afterModal} />}
-                {modal === 'addPayment' && selected && <AddPaymentModal student={selected} onClose={() => setModal(null)} onSaved={afterModal} />}
+                {modal === 'addPayment' && selected && <AddPaymentModal student={selected} students={students} onClose={() => setModal(null)} onSaved={afterModal} />}
+                {modal === 'addPaymentGlobal' && <AddPaymentModal student={null} students={students} onClose={() => setModal(null)} onSaved={afterModal} />}
             </AnimatePresence>
 
             {/* Confirm — Remove Student */}

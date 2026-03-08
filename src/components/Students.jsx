@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import api from '../utils/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 import ConfirmModal from './ConfirmModal';
 import useDebounce from '../hooks/useDebounce';
 
@@ -114,8 +115,8 @@ function StudentModal({ editData, onClose, onSaved }) {
                         {/* Extra fields for editing existing student */}
                         {isEdit && (<>
                             <div>
-                                <label style={lbl}>Room Number *</label>
-                                <input value={form.roomNumber} onChange={set('roomNumber')} onFocus={focusInp} onBlur={blurInp} placeholder="e.g. 101" style={inp} />
+                                <label style={lbl}>Room Number</label>
+                                <input value={form.roomNumber} onChange={set('roomNumber')} onFocus={focusInp} onBlur={blurInp} placeholder="e.g. 101" style={{ ...inp, opacity: 0.6 }} disabled title="Use the Transfer button to change rooms" />
                             </div>
                             <div>
                                 <label style={lbl}>Monthly Fee (₹)</label>
@@ -158,13 +159,11 @@ function StudentModal({ editData, onClose, onSaved }) {
 }
 
 /* ─── Student Card ─── */
-function StudentCard({ student, onEdit, onDelete, onDeleteRequest, delay }) {
+function StudentCard({ student, onEdit, onDeleteRequest, onTransferRequest, delay, canManage, role }) {
     const [deleting, setDeleting] = useState(false);
 
-    const handleDelete = async () => {
-        setDeleting(true);
-        await onDelete(student._id);
-        setDeleting(false);
+    const handleDelete = () => {
+        onDeleteRequest(student);
     };
 
     const dueColor = student.feeDues > 0 ? '#e11d48' : '#059669';
@@ -190,19 +189,30 @@ function StudentCard({ student, onEdit, onDelete, onDeleteRequest, delay }) {
                 </div>
 
                 {/* Action buttons */}
-                <div style={{ display: 'flex', gap: 6 }}>
-                    <button
-                        onClick={() => onEdit(student)}
-                        style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid rgba(79,70,229,0.25)', background: 'rgba(79,70,229,0.07)', color: '#4f46e5', fontSize: 13, cursor: 'pointer', lineHeight: 1 }}
-                        title="Edit"
-                    >✎</button>
-                    <button
-                        onClick={() => onDeleteRequest(student)}
-                        disabled={deleting}
-                        style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid rgba(225,29,72,0.25)', background: 'rgba(225,29,72,0.07)', color: '#e11d48', fontSize: 13, cursor: 'pointer', lineHeight: 1, opacity: deleting ? 0.5 : 1 }}
-                        title="Remove"
-                    >{deleting ? '…' : '🗑'}</button>
-                </div>
+                {canManage && (
+                    <div style={{ display: 'flex', gap: 6 }}>
+                        {role === 'admin' && (
+                            <button
+                                onClick={() => onEdit(student)}
+                                style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid rgba(79,70,229,0.25)', background: 'rgba(79,70,229,0.07)', color: '#4f46e5', fontSize: 13, cursor: 'pointer', lineHeight: 1 }}
+                                title="Edit"
+                            >✎</button>
+                        )}
+                        <button
+                            onClick={() => onTransferRequest(student)}
+                            style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid rgba(245,158,11,0.25)', background: 'rgba(245,158,11,0.07)', color: '#f59e0b', fontSize: 13, cursor: 'pointer', lineHeight: 1 }}
+                            title="Transfer Room"
+                        >⇄</button>
+                        {role === 'admin' && (
+                            <button
+                                onClick={() => onDeleteRequest(student)}
+                                disabled={deleting}
+                                style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid rgba(225,29,72,0.25)', background: 'rgba(225,29,72,0.07)', color: '#e11d48', fontSize: 13, cursor: 'pointer', lineHeight: 1, opacity: deleting ? 0.5 : 1 }}
+                                title="Remove"
+                            >{deleting ? '…' : '🗑'}</button>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Info grid */}
@@ -252,10 +262,70 @@ function StudentCard({ student, onEdit, onDelete, onDeleteRequest, delay }) {
     );
 }
 
+/* ─── Transfer Modal ─── */
+function TransferModal({ student, rooms, onClose, onRefresh, showToast }) {
+    const [targetRoom, setTargetRoom] = useState('');
+    const [saving, setSaving] = useState(false);
+    const [err, setErr] = useState('');
+
+    const availableRooms = rooms.filter(r => r.roomNumber !== student.roomNumber && r.status !== 'maintenance' && r.occupiedBeds < r.totalBeds);
+
+    const handleTransfer = async () => {
+        if (!targetRoom) return;
+        setSaving(true); setErr('');
+        try {
+            await api.post(`/rooms/${targetRoom}/transfer`, { studentId: student._id });
+            showToast(`✓ Transferred ${student.name} to Room ${targetRoom}`);
+            onRefresh();
+            onClose();
+        } catch (e) {
+            setErr(e.response?.data?.message || 'Transfer failed.');
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(15,23,42,0.45)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={e => e.target === e.currentTarget && onClose()}>
+            <motion.div initial={{ opacity: 0, scale: 0.94, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.94 }} transition={{ duration: 0.2 }} style={{ background: 'var(--bg-base)', borderRadius: 20, width: '100%', maxWidth: 400, boxShadow: '0 24px 80px rgba(0,0,0,0.18)', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
+                <div style={{ padding: '20px 26px 18px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Transfer Room</div>
+                        <div style={{ fontSize: 19, fontWeight: 700, color: 'var(--text-primary)', marginTop: 2 }}>Move {student.name}</div>
+                    </div>
+                    <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: 16, cursor: 'pointer' }}>✕</button>
+                </div>
+                <div style={{ padding: '24px 26px' }}>
+                    <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>Select an available room to transfer this student into.</div>
+                    <select value={targetRoom} onChange={e => setTargetRoom(e.target.value)} style={{ width: '100%', padding: '10px 13px', borderRadius: 9, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', fontSize: 14, color: 'var(--text-primary)', fontFamily: 'Outfit, sans-serif', outline: 'none' }}>
+                        <option value="">— Choose a room —</option>
+                        {availableRooms.map(r => (
+                            <option key={r.roomNumber} value={r.roomNumber}>Room {r.roomNumber} — {r.totalBeds - r.occupiedBeds} bed(s) free ({r.type})</option>
+                        ))}
+                    </select>
+                    {availableRooms.length === 0 && (
+                        <div style={{ marginTop: 10, fontSize: 13, color: '#e11d48' }}>No available rooms right now.</div>
+                    )}
+                    {err && (
+                        <div style={{ marginTop: 14, padding: '10px 13px', background: 'rgba(225,29,72,0.07)', border: '1px solid rgba(225,29,72,0.2)', borderRadius: 9, fontSize: 13, color: '#e11d48' }}>⚠ {err}</div>
+                    )}
+                </div>
+                <div style={{ padding: '14px 26px', borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                    <button onClick={onClose} style={{ padding: '10px 22px', borderRadius: 10, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', fontSize: 14, fontWeight: 600, fontFamily: 'Outfit, sans-serif', cursor: 'pointer' }}>Cancel</button>
+                    <button onClick={handleTransfer} disabled={saving || !targetRoom} style={{ padding: '10px 24px', borderRadius: 10, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg, #f59e0b, #ea580c)', color: '#fff', fontSize: 14, fontWeight: 600, fontFamily: 'Outfit, sans-serif', opacity: (saving || !targetRoom) ? 0.7 : 1, boxShadow: '0 4px 16px rgba(245,158,11,0.3)' }}>{saving ? 'Moving…' : '⇄ Transfer'}</button>
+                </div>
+            </motion.div>
+        </div>
+    );
+}
+
 /* ─── Main Component ─── */
 export default function Students() {
     const { t } = useLanguage();
+    const { user } = useAuth();
+    const role = (user?.role || '').toLowerCase().trim();
+    const canManage = role === 'admin' || role === 'manager';
     const [students, setStudents] = useState([]);
+    const [rooms, setRooms] = useState([]);
     const [loading, setLoading] = useState(true);
     const [modal, setModal] = useState(null); // null | 'add' | { ...editData }
     const [search, setSearch] = useState('');
@@ -264,21 +334,26 @@ export default function Students() {
     const [sortBy, setSortBy] = useState('name'); // 'name' | 'dues' | 'room'
     const [toast, setToast] = useState(null); // { msg, type }
     const [confirmTarget, setConfirmTarget] = useState(null); // student to delete
+    const [transferTarget, setTransferTarget] = useState(null); // student to transfer
 
     const showToast = (msg, type = 'success') => {
         setToast({ msg, type });
         setTimeout(() => setToast(null), 4000);
     };
 
-    const fetchStudents = async () => {
+    const fetchData = async () => {
         try {
-            const { data } = await api.get(`/students`);
-            setStudents(data);
+            const [sRes, rRes] = await Promise.all([
+                api.get(`/students`),
+                api.get(`/rooms`)
+            ]);
+            setStudents(sRes.data);
+            setRooms(rRes.data);
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
     };
 
-    useEffect(() => { fetchStudents(); }, []);
+    useEffect(() => { fetchData(); }, []);
 
     const handleDelete = async (id) => {
         await api.delete(`/students/${id}`);
@@ -287,7 +362,7 @@ export default function Students() {
 
     const afterSave = (email) => {
         setModal(null);
-        fetchStudents();
+        fetchData();
         if (email) showToast(`✓ Student added — credentials sent to ${email}`);
     };
 
@@ -319,40 +394,44 @@ export default function Students() {
     );
 
     return (
-        <div style={{ padding: 32, maxWidth: 1200, margin: '0 auto' }}>
+        <div style={{ padding: '28px 32px', maxWidth: 1200, margin: '0 auto' }}>
             {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
                 <div>
                     <div className="page-label">Administration</div>
-                    <div className="page-title" style={{ background: 'linear-gradient(135deg, #4f46e5, #9333ea)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-                        Manage Students
-                    </div>
+                    <div className="page-title gradient-text-indigo">Manage Students</div>
                     <div className="page-desc">Add, edit and remove student records from the hostel.</div>
                 </div>
-                <motion.button
-                    whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
-                    onClick={() => setModal('add')}
-                    style={{ padding: '11px 22px', borderRadius: 12, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', fontSize: 14, fontWeight: 600, fontFamily: 'Outfit, sans-serif', boxShadow: '0 4px 18px rgba(79,70,229,0.35)', display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexShrink: 0 }}
-                >
-                    <span style={{ fontSize: 18 }}>+</span> Add Student
-                </motion.button>
+                {role === 'admin' && (
+                    <motion.button
+                        whileHover={{ scale: 1.04, y: -1 }} whileTap={{ scale: 0.97 }}
+                        onClick={() => setModal('add')}
+                        className="btn-primary"
+                        style={{ fontSize: 14, marginTop: 4 }}
+                    >
+                        <span style={{ fontSize: 18, lineHeight: 1 }}>+</span> Add Student
+                    </motion.button>
+                )}
             </div>
 
             {/* Summary strip */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 26 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 22 }}>
                 {[
-                    { label: 'Total Students', value: students.length, color: '#4f46e5', icon: '👥' },
-                    { label: 'Rooms Occupied', value: [...new Set(students.map(s => s.roomNumber))].length, color: '#0891b2', icon: '🏠' },
-                    { label: 'Pending Dues', value: withDues, color: '#e11d48', icon: '⚠' },
-                    { label: 'Total Collected', value: `₹${totalPaid.toLocaleString('en-IN')}`, color: '#059669', icon: '💰' },
-                ].map(stat => (
-                    <div key={stat.label} className="card" style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div style={{ width: 42, height: 42, borderRadius: 11, background: `${stat.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, flexShrink: 0 }}>{stat.icon}</div>
+                    { label: 'Total Students', value: students.length, color: '#4f46e5', icon: '👥', iconBg: 'linear-gradient(135deg,#4f46e5,#7c3aed)' },
+                    { label: 'Rooms Occupied', value: [...new Set(students.map(s => s.roomNumber))].length, color: '#0891b2', icon: '🏠', iconBg: 'linear-gradient(135deg,#0ea5e9,#06b6d4)' },
+                    { label: 'Pending Dues', value: withDues, color: '#e11d48', icon: '⚠', iconBg: 'linear-gradient(135deg,#f43f5e,#ec4899)' },
+                    { label: 'Total Collected', value: `₹${totalPaid.toLocaleString('en-IN')}`, color: '#059669', icon: '💰', iconBg: 'linear-gradient(135deg,#10b981,#059669)' },
+                ].map((stat, i) => (
+                    <motion.div key={stat.label} className="card"
+                        initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
+                        style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 13 }}
+                    >
+                        <div style={{ width: 44, height: 44, borderRadius: 12, background: stat.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, flexShrink: 0, boxShadow: `0 6px 16px ${stat.color}35` }}>{stat.icon}</div>
                         <div>
-                            <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{stat.label}</div>
-                            <div style={{ fontSize: 20, fontWeight: 700, color: stat.color }}>{stat.value}</div>
+                            <div style={{ fontSize: 10.5, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.09em', fontWeight: 600 }}>{stat.label}</div>
+                            <div style={{ fontSize: 21, fontWeight: 800, color: stat.color, letterSpacing: '-0.5px', marginTop: 2 }}>{stat.value}</div>
                         </div>
-                    </div>
+                    </motion.div>
                 ))}
             </div>
 
@@ -413,8 +492,10 @@ export default function Students() {
                                 student={s}
                                 delay={i * 0.05}
                                 onEdit={student => setModal(student)}
-                                onDelete={handleDelete}
                                 onDeleteRequest={student => setConfirmTarget(student)}
+                                onTransferRequest={student => setTransferTarget(student)}
+                                canManage={canManage}
+                                role={role}
                             />
                         ))}
                     </div>
@@ -428,6 +509,19 @@ export default function Students() {
                         editData={modal === 'add' ? null : modal}
                         onClose={() => setModal(null)}
                         onSaved={afterSave}
+                    />
+                )}
+            </AnimatePresence>
+
+            {/* Transfer Confirmation */}
+            <AnimatePresence>
+                {transferTarget && (
+                    <TransferModal
+                        student={transferTarget}
+                        rooms={rooms}
+                        onClose={() => setTransferTarget(null)}
+                        onRefresh={fetchData}
+                        showToast={showToast}
                     />
                 )}
             </AnimatePresence>

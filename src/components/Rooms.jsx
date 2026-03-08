@@ -40,14 +40,15 @@ const OccupancyBar = ({ occupied, total }) => {
 /* ─── Room Card ─── */
 function RoomCard({ room, onSelect, onDelete, canDelete }) {
     const tm = TYPE_META[room.type] || TYPE_META.Classic;
-    const statusColor = room.occupiedBeds === room.totalBeds ? '#e11d48' : room.occupiedBeds === 0 ? '#10b981' : '#f59e0b';
-    const statusLabel = room.occupiedBeds === room.totalBeds ? 'Full' : room.occupiedBeds === 0 ? 'Vacant' : 'Partial';
+    const isMaintenance = room.status === 'maintenance';
+    const statusColor = isMaintenance ? '#f97316' : room.occupiedBeds === room.totalBeds ? '#e11d48' : room.occupiedBeds === 0 ? '#10b981' : '#f59e0b';
+    const statusLabel = isMaintenance ? '🔧 Maintenance' : room.occupiedBeds === room.totalBeds ? 'Full' : room.occupiedBeds === 0 ? 'Vacant' : 'Partial';
 
     return (
         <motion.div
             whileHover={{ y: -4, boxShadow: '0 12px 32px rgba(0,0,0,0.12)' }}
             className="card"
-            style={{ padding: 20, cursor: 'pointer', position: 'relative', overflow: 'hidden', borderTop: `3px solid ${tm.color}` }}
+            style={{ padding: 20, cursor: 'pointer', position: 'relative', overflow: 'hidden', borderTop: `3px solid ${isMaintenance ? '#f97316' : tm.color}`, opacity: isMaintenance ? 0.85 : 1 }}
             onClick={() => onSelect(room)}
         >
             {/* Type badge */}
@@ -105,13 +106,19 @@ function RoomCard({ room, onSelect, onDelete, canDelete }) {
 }
 
 /* ─── Room Detail Drawer ─── */
-function RoomDrawer({ room, students, onClose, onRefresh }) {
+function RoomDrawer({ room, students, onClose, onRefresh, canManage }) {
     const [assignId, setAssignId] = useState('');
     const [saving, setSaving] = useState(false);
     const [msg, setMsg] = useState({ type: '', text: '' });
     const [editType, setEditType] = useState(room.type);
     const [editSaving, setEditSaving] = useState(false);
     const [confirmUnassign, setConfirmUnassign] = useState(null);
+    const [roomStatus, setRoomStatus] = useState(room.status || 'available');
+    const [statusSaving, setStatusSaving] = useState(false);
+    // Transfer: which occupant is being transferred, target room
+    const [transferStudent, setTransferStudent] = useState(null);
+    const [transferRoomNum, setTransferRoomNum] = useState('');
+    const [transferSaving, setTransferSaving] = useState(false);
 
     const unassigned = students.filter(s => !s.roomNumber || s.roomNumber === '');
 
@@ -150,6 +157,34 @@ function RoomDrawer({ room, students, onClose, onRefresh }) {
         } finally { setEditSaving(false); }
     };
 
+    const handleToggleMaintenance = async () => {
+        const next = roomStatus === 'maintenance' ? 'available' : 'maintenance';
+        setStatusSaving(true);
+        try {
+            await api.patch(`/rooms/${room.roomNumber}/status`, { status: next });
+            setRoomStatus(next);
+            setMsg({ type: next === 'maintenance' ? 'warn' : 'ok', text: next === 'maintenance' ? '🔧 Room blocked for maintenance.' : '✅ Room restored to available.' });
+            setTimeout(() => { setMsg({ type: '', text: '' }); onRefresh(); }, 1800);
+        } catch (e) {
+            setMsg({ type: 'err', text: e.response?.data?.message || 'Status update failed.' });
+        } finally { setStatusSaving(false); }
+    };
+
+    const isMaintenance = roomStatus === 'maintenance';
+
+    const handleTransfer = async () => {
+        if (!transferStudent || !transferRoomNum) return;
+        setTransferSaving(true); setMsg({ type: '', text: '' });
+        try {
+            await api.post(`/rooms/${transferRoomNum}/transfer`, { studentId: transferStudent._id });
+            setMsg({ type: 'ok', text: `${transferStudent.name} transferred to Room ${transferRoomNum}.` });
+            setTransferStudent(null); setTransferRoomNum('');
+            setTimeout(() => { setMsg({ type: '', text: '' }); onRefresh(); }, 1600);
+        } catch (e) {
+            setMsg({ type: 'err', text: e.response?.data?.message || 'Transfer failed.' });
+        } finally { setTransferSaving(false); }
+    };
+
     const tm = TYPE_META[room.type] || TYPE_META.Classic;
 
     return (
@@ -182,6 +217,13 @@ function RoomDrawer({ room, students, onClose, onRefresh }) {
 
                 <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 22 }}>
 
+                    {/* Maintenance banner */}
+                    {isMaintenance && (
+                        <div style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.3)', fontSize: 13, color: '#f97316', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            🔧 This room is currently blocked for maintenance. Students cannot be assigned.
+                        </div>
+                    )}
+
                     {/* Stats row */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
                         {[
@@ -197,26 +239,51 @@ function RoomDrawer({ room, students, onClose, onRefresh }) {
                         ))}
                     </div>
 
-                    {/* Edit type */}
-                    <div>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Room Type</div>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                            {['Classic', 'Premium'].map(t => (
-                                <button key={t} onClick={() => setEditType(t)} style={{
-                                    flex: 1, padding: '9px', borderRadius: 10, cursor: 'pointer', fontFamily: 'Outfit,sans-serif', fontWeight: 600, fontSize: 13,
-                                    border: `2px solid ${editType === t ? TYPE_META[t].color : 'var(--border-subtle)'}`,
-                                    background: editType === t ? TYPE_META[t].bg : 'transparent',
-                                    color: editType === t ? TYPE_META[t].color : 'var(--text-secondary)',
-                                    transition: 'all 0.18s',
-                                }}>{t}</button>
-                            ))}
-                            {editType !== room.type && (
-                                <button onClick={handleSaveType} disabled={editSaving} style={{ padding: '9px 14px', borderRadius: 10, border: 'none', background: '#6366f1', color: '#fff', fontFamily: 'Outfit,sans-serif', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-                                    {editSaving ? '…' : 'Save'}
-                                </button>
-                            )}
+                    {/* Room Type */}
+                    {canManage && (
+                        <div>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Room Type</div>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                {['Classic', 'Premium'].map(t => (
+                                    <button key={t} onClick={() => setEditType(t)} style={{
+                                        flex: 1, padding: '9px', borderRadius: 10, cursor: 'pointer', fontFamily: 'Outfit,sans-serif', fontWeight: 600, fontSize: 13,
+                                        border: `2px solid ${editType === t ? TYPE_META[t].color : 'var(--border-subtle)'}`,
+                                        background: editType === t ? TYPE_META[t].bg : 'transparent',
+                                        color: editType === t ? TYPE_META[t].color : 'var(--text-secondary)',
+                                        transition: 'all 0.18s',
+                                    }}>{t}</button>
+                                ))}
+                                {editType !== room.type && (
+                                    <button onClick={handleSaveType} disabled={editSaving} style={{ padding: '9px 14px', borderRadius: 10, border: 'none', background: '#6366f1', color: '#fff', fontFamily: 'Outfit,sans-serif', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                                        {editSaving ? '…' : 'Save'}
+                                    </button>
+                                )}
+                            </div>
                         </div>
-                    </div>
+                    )}
+
+                    {/* Maintenance toggle */}
+                    {canManage && (
+                        <div>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Room Status</div>
+                            <motion.button
+                                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+                                onClick={handleToggleMaintenance}
+                                disabled={statusSaving}
+                                style={{
+                                    width: '100%', padding: '11px 16px', borderRadius: 12, cursor: statusSaving ? 'not-allowed' : 'pointer',
+                                    border: `2px solid ${isMaintenance ? 'rgba(16,185,129,0.4)' : 'rgba(249,115,22,0.4)'}`,
+                                    background: isMaintenance ? 'rgba(16,185,129,0.08)' : 'rgba(249,115,22,0.08)',
+                                    color: isMaintenance ? '#10b981' : '#f97316',
+                                    fontFamily: 'Outfit,sans-serif', fontWeight: 700, fontSize: 14,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                    opacity: statusSaving ? 0.7 : 1, transition: 'all 0.2s',
+                                }}
+                            >
+                                {statusSaving ? '⏳ Updating…' : isMaintenance ? '✅ Restore to Available' : '🔧 Block for Maintenance'}
+                            </motion.button>
+                        </div>
+                    )}
 
                     {/* Current occupants */}
                     <div>
@@ -228,30 +295,66 @@ function RoomDrawer({ room, students, onClose, onRefresh }) {
                         ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                                 {room.occupants.map(s => (
-                                    <div key={s._id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'var(--bg-elevated)', borderRadius: 12, border: '1px solid var(--border-subtle)' }}>
-                                        <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#6366f1,#a855f7)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
-                                            {s.name.charAt(0).toUpperCase()}
+                                    <div key={s._id} style={{ background: 'var(--bg-elevated)', borderRadius: 12, border: '1px solid var(--border-subtle)', overflow: 'hidden' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px' }}>
+                                            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#6366f1,#a855f7)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+                                                {s.name.charAt(0).toUpperCase()}
+                                            </div>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</div>
+                                                <div style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.email}</div>
+                                            </div>
+                                            {s.feeDues > 0 && (
+                                                <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 20, background: 'rgba(225,29,72,0.1)', color: '#e11d48', fontWeight: 700, flexShrink: 0 }}>₹{s.feeDues.toLocaleString()}</span>
+                                            )}
+                                            {/* Transfer trigger */}
+                                            {canManage && (
+                                                <button
+                                                    onClick={() => { setTransferStudent(s); setTransferRoomNum(''); }}
+                                                    style={{ padding: '4px 10px', borderRadius: 8, border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.07)', color: '#6366f1', cursor: 'pointer', fontSize: 11, fontWeight: 700, flexShrink: 0 }}
+                                                    title="Transfer to another room"
+                                                >⇄</button>
+                                            )}
+                                            {/* Vacate */}
+                                            {canManage && (
+                                                <button
+                                                    onClick={() => setConfirmUnassign(s)}
+                                                    style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid rgba(225,29,72,0.2)', background: 'rgba(225,29,72,0.06)', color: '#e11d48', cursor: 'pointer', fontSize: 13, flexShrink: 0 }}
+                                                    title="Vacate room"
+                                                >✕</button>
+                                            )}
                                         </div>
-                                        <div style={{ flex: 1, minWidth: 0 }}>
-                                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</div>
-                                            <div style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.email}</div>
-                                        </div>
-                                        {s.feeDues > 0 && (
-                                            <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 20, background: 'rgba(225,29,72,0.1)', color: '#e11d48', fontWeight: 700, flexShrink: 0 }}>₹{s.feeDues.toLocaleString()}</span>
+                                        {/* Inline transfer panel */}
+                                        {transferStudent?._id === s._id && (
+                                            <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', display: 'flex', gap: 8, alignItems: 'center' }}>
+                                                <select
+                                                    value={transferRoomNum}
+                                                    onChange={e => setTransferRoomNum(e.target.value)}
+                                                    style={{ ...inputSx, flex: 1, fontSize: 12 }}
+                                                >
+                                                    <option value="">— Transfer to room —</option>
+                                                    {room.otherRooms?.filter(r => r.roomNumber !== room.roomNumber && r.status !== 'maintenance' && r.occupiedBeds < r.totalBeds).map(r => (
+                                                        <option key={r.roomNumber} value={r.roomNumber}>
+                                                            Room {r.roomNumber} — {r.totalBeds - r.occupiedBeds} bed(s) free ({r.type})
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                <button onClick={handleTransfer} disabled={!transferRoomNum || transferSaving}
+                                                    style={{ padding: '8px 14px', borderRadius: 9, border: 'none', background: transferRoomNum ? '#6366f1' : 'var(--bg-elevated)', color: transferRoomNum ? '#fff' : 'var(--text-muted)', fontFamily: 'Outfit,sans-serif', fontWeight: 700, fontSize: 12, cursor: transferRoomNum ? 'pointer' : 'default', flexShrink: 0 }}>
+                                                    {transferSaving ? '…' : '⇄ Move'}
+                                                </button>
+                                                <button onClick={() => setTransferStudent(null)}
+                                                    style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 12, flexShrink: 0 }}>✕</button>
+                                            </div>
                                         )}
-                                        <button
-                                            onClick={() => setConfirmUnassign(s)}
-                                            style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid rgba(225,29,72,0.2)', background: 'rgba(225,29,72,0.06)', color: '#e11d48', cursor: 'pointer', fontSize: 13, flexShrink: 0 }}
-                                            title="Remove from room"
-                                        >✕</button>
                                     </div>
                                 ))}
                             </div>
                         )}
                     </div>
 
-                    {/* Assign student */}
-                    {room.occupiedBeds < room.totalBeds && (
+                    {/* Assign student — hidden during maintenance */}
+                    {!isMaintenance && room.occupiedBeds < room.totalBeds && canManage && (
                         <div>
                             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Assign Student</div>
                             <div style={{ display: 'flex', gap: 8 }}>
@@ -367,7 +470,8 @@ function AddRoomModal({ onClose, onCreated }) {
 /* ─── Main Rooms Component ─── */
 export default function Rooms() {
     const { user } = useAuth();
-    const role = user?.role || 'admin';
+    const role = (user?.role || 'admin').toLowerCase().trim();
+    const canManage = role === 'admin' || role === 'manager';
 
     const [rooms, setRooms] = useState([]);
     const [students, setStudents] = useState([]);
@@ -423,8 +527,10 @@ export default function Rooms() {
 
     // Stats summary
     const totalRooms = rooms.length;
-    const vacantRooms = rooms.filter(r => r.occupiedBeds === 0).length;
-    const fullRooms = rooms.filter(r => r.occupiedBeds === r.totalBeds).length;
+    const vacantRooms = rooms.filter(r => r.occupiedBeds === 0 && r.status !== 'maintenance').length;
+    const fullRooms = rooms.filter(r => r.occupiedBeds === r.totalBeds && r.status !== 'maintenance').length;
+    const maintenanceRooms = rooms.filter(r => r.status === 'maintenance').length;
+    const partialRooms = rooms.filter(r => r.occupiedBeds > 0 && r.occupiedBeds < r.totalBeds && r.status !== 'maintenance').length;
     const totalBeds = rooms.reduce((a, r) => a + r.totalBeds, 0);
     const occupiedBeds = rooms.reduce((a, r) => a + r.occupiedBeds, 0);
     const occupancyPct = totalBeds === 0 ? 0 : Math.round((occupiedBeds / totalBeds) * 100);
@@ -432,9 +538,10 @@ export default function Rooms() {
     // Filter rooms
     const filtered = useMemo(() => rooms.filter(r => {
         const statusMatch = filter === 'All'
-            || (filter === 'Vacant' && r.occupiedBeds === 0)
-            || (filter === 'Partial' && r.occupiedBeds > 0 && r.occupiedBeds < r.totalBeds)
-            || (filter === 'Full' && r.occupiedBeds === r.totalBeds);
+            || (filter === 'Vacant' && r.occupiedBeds === 0 && r.status !== 'maintenance')
+            || (filter === 'Partial' && r.occupiedBeds > 0 && r.occupiedBeds < r.totalBeds && r.status !== 'maintenance')
+            || (filter === 'Full' && r.occupiedBeds === r.totalBeds && r.status !== 'maintenance')
+            || (filter === 'Maintenance' && r.status === 'maintenance');
         const typeMatch = typeFilter === 'All' || r.type === typeFilter;
         const q = debouncedSearch.toLowerCase().trim();
         const searchMatch = !q || r.roomNumber.toLowerCase().includes(q)
@@ -445,8 +552,9 @@ export default function Rooms() {
     const FILTERS = [
         { key: 'All', label: `All (${totalRooms})` },
         { key: 'Vacant', label: `Vacant (${vacantRooms})`, color: '#10b981' },
-        { key: 'Partial', label: `Partial (${totalRooms - vacantRooms - fullRooms})`, color: '#f59e0b' },
+        { key: 'Partial', label: `Partial (${partialRooms})`, color: '#f59e0b' },
         { key: 'Full', label: `Full (${fullRooms})`, color: '#e11d48' },
+        { key: 'Maintenance', label: `Maintenance (${maintenanceRooms})`, color: '#f97316' },
     ];
 
     if (loading) return <SkeletonPage cards={6} stats={5} />;
@@ -463,13 +571,15 @@ export default function Rooms() {
                     </div>
                     <div className="page-desc">View occupancy, manage beds, and assign students to rooms.</div>
                 </div>
-                <motion.button
-                    whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-                    onClick={() => setShowAdd(true)}
-                    style={{ padding: '11px 22px', borderRadius: 14, border: 'none', background: 'linear-gradient(135deg,#6366f1,#a855f7)', color: '#fff', fontFamily: 'Outfit,sans-serif', fontWeight: 700, fontSize: 14, cursor: 'pointer', boxShadow: '0 8px 24px rgba(99,102,241,0.3)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 8 }}
-                >
-                    <span style={{ fontSize: 18 }}>+</span> Add Room
-                </motion.button>
+                {role === 'admin' && (
+                    <motion.button
+                        whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                        onClick={() => setShowAdd(true)}
+                        style={{ padding: '11px 22px', borderRadius: 14, border: 'none', background: 'linear-gradient(135deg,#6366f1,#a855f7)', color: '#fff', fontFamily: 'Outfit,sans-serif', fontWeight: 700, fontSize: 14, cursor: 'pointer', boxShadow: '0 8px 24px rgba(99,102,241,0.3)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 8 }}
+                    >
+                        <span style={{ fontSize: 18 }}>+</span> Add Room
+                    </motion.button>
+                )}
             </div>
 
             {/* ─── Summary Stats ─── */}
@@ -479,6 +589,7 @@ export default function Rooms() {
                     { label: 'Total Beds', value: totalBeds, icon: '🛏', color: '#0891b2' },
                     { label: 'Occupied', value: occupiedBeds, icon: '👤', color: '#f59e0b' },
                     { label: 'Available', value: totalBeds - occupiedBeds, icon: '✅', color: '#10b981' },
+                    { label: 'Maintenance', value: maintenanceRooms, icon: '🔧', color: '#f97316' },
                     { label: 'Occupancy', value: `${occupancyPct}%`, icon: '📊', color: occupancyPct > 90 ? '#e11d48' : '#6366f1' },
                 ].map((s, i) => (
                     <motion.div key={s.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
@@ -529,10 +640,16 @@ export default function Rooms() {
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ textAlign: 'center', padding: '80px 20px' }}>
                     <div style={{ fontSize: 56, marginBottom: 16 }}>🏠</div>
                     <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>No Rooms Yet</div>
-                    <div style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 24 }}>Click <strong>+ Add Room</strong> to create the first room in the hostel.</div>
-                    <motion.button whileHover={{ scale: 1.04 }} onClick={() => setShowAdd(true)} style={{ padding: '12px 28px', borderRadius: 14, border: 'none', background: 'linear-gradient(135deg,#6366f1,#a855f7)', color: '#fff', fontFamily: 'Outfit,sans-serif', fontWeight: 700, fontSize: 15, cursor: 'pointer', boxShadow: '0 8px 24px rgba(99,102,241,0.3)' }}>
-                        + Add First Room
-                    </motion.button>
+                    <div style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 24 }}>
+                        {role === 'admin'
+                            ? <>Click <strong>+ Add Room</strong> to create the first room in the hostel.</>
+                            : 'No rooms have been created yet. Contact an admin to set up rooms.'}
+                    </div>
+                    {role === 'admin' && (
+                        <motion.button whileHover={{ scale: 1.04 }} onClick={() => setShowAdd(true)} style={{ padding: '12px 28px', borderRadius: 14, border: 'none', background: 'linear-gradient(135deg,#6366f1,#a855f7)', color: '#fff', fontFamily: 'Outfit,sans-serif', fontWeight: 700, fontSize: 15, cursor: 'pointer', boxShadow: '0 8px 24px rgba(99,102,241,0.3)' }}>
+                            + Add First Room
+                        </motion.button>
+                    )}
                 </motion.div>
             )}
 
@@ -561,10 +678,14 @@ export default function Rooms() {
                 {selectedRoom && (
                     <RoomDrawer
                         key={selectedRoom.roomNumber}
-                        room={rooms.find(r => r.roomNumber === selectedRoom.roomNumber) || selectedRoom}
+                        room={{
+                            ...(rooms.find(r => r.roomNumber === selectedRoom.roomNumber) || selectedRoom),
+                            otherRooms: rooms,
+                        }}
                         students={students}
                         onClose={() => setSelectedRoom(null)}
                         onRefresh={handleRefresh}
+                        canManage={canManage}
                     />
                 )}
             </AnimatePresence>
