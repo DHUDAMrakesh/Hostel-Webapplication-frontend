@@ -28,6 +28,7 @@ import { useSettings } from './context/SettingsContext';
 import { useAuth } from './context/AuthContext';
 import Login from './components/Auth/Login';
 import Signup from './components/Auth/Signup';
+import api, { onConnectivityChange } from './utils/api';
 
 // Suspense wrapper with skeleton fallback
 const PageSuspense = ({ children, rows = false }) => (
@@ -99,6 +100,36 @@ const Layout = ({ settings, collapsed, setCollapsed, handleLogout, user }) => {
   const location = useLocation();
   const role = user?.role || 'student';
   const [profileOpen, setProfileOpen] = React.useState(false);
+  const [health, setHealth] = React.useState({ server: true, database: true });
+
+  React.useEffect(() => {
+    // Listen for network level errors from api.js
+    const unsub = onConnectivityChange((online) => {
+      setHealth(h => ({ ...h, server: online }));
+    });
+
+    // Periodically poll health endpoint for DB status
+    const checkHealth = async () => {
+      try {
+        const { data } = await api.get('/health', { _skipRetry: true });
+        setHealth({ server: true, database: data.database === 'connected' });
+      } catch (err) {
+        // If it's a network error, api.js will notify via listener
+        // If it's a 503 from our health check, it means DB is down but server is up
+        if (err.response?.status === 503) {
+          setHealth({ server: true, database: false });
+        }
+      }
+    };
+
+    const timer = setInterval(checkHealth, 10000); // Check every 10s
+    checkHealth(); // Initial check
+
+    return () => {
+      unsub();
+      clearInterval(timer);
+    };
+  }, []);
 
   const navItems = ALL_NAV_ITEMS.filter(item => item.roles.includes(role));
 
@@ -267,9 +298,17 @@ const Layout = ({ settings, collapsed, setCollapsed, handleLogout, user }) => {
             </div>
 
             {/* Status */}
-            <div className="status-badge" style={{ display: window.innerWidth < 900 ? 'none' : 'flex' }}>
-              <span className="status-dot" />
-              All systems operational
+            <div className="status-badge" style={{ 
+              display: window.innerWidth < 768 ? 'none' : 'flex',
+              background: !health.server ? '#fee2e2' : (!health.database ? '#fff7ed' : 'var(--bg-elevated)'),
+              color: !health.server ? '#dc2626' : (!health.database ? '#ea580c' : 'var(--text-secondary)'),
+              borderColor: !health.server ? '#fca5a5' : (!health.database ? '#fdba74' : 'var(--border-subtle)'),
+            }}>
+              <span className="status-dot" style={{ 
+                background: !health.server ? '#dc2626' : (!health.database ? '#ea580c' : '#10b981'),
+                boxShadow: `0 0 8px ${!health.server ? '#dc2626' : (!health.database ? '#ea580c' : '#10b981')}60`
+              }} />
+              {!health.server ? 'Backend Disconnected' : (!health.database ? 'Database Error' : 'System Operational')}
             </div>
 
             {/* Notifications — admin/manager */}
@@ -319,6 +358,45 @@ const Layout = ({ settings, collapsed, setCollapsed, handleLogout, user }) => {
           </AnimatePresence>
         </div>
       </div>
+
+      {/* Global Connectivity Alert Overlay */}
+      <AnimatePresence>
+        {!health.server && (
+          <motion.div 
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            style={{
+              position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+              background: '#ef4444', color: 'white', padding: '12px 24px', borderRadius: 12,
+              display: 'flex', alignItems: 'center', gap: 12, zIndex: 9999,
+              boxShadow: '0 10px 25px rgba(239,68,68,0.4)', fontWeight: 600,
+              fontFamily: 'Outfit, sans-serif'
+            }}
+          >
+            <span style={{ fontSize: 20 }}>⚠️</span>
+            Connection lost. Attempting to reconnect...
+          </motion.div>
+        )}
+        {health.server && !health.database && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            style={{
+              position: 'fixed', top: 80, right: 24,
+              background: '#fff7ed', border: '1px solid #fdba74', color: '#ea580c',
+              padding: '12px 20px', borderRadius: 12, zIndex: 9999,
+              display: 'flex', alignItems: 'center', gap: 10,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontWeight: 600,
+              fontSize: 14, fontFamily: 'Outfit, sans-serif'
+            }}
+          >
+            <span>🏮</span>
+            Database is currently offline. Some features may not work.
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Student profile slide panel */}
       {role === 'student' && profileOpen && (

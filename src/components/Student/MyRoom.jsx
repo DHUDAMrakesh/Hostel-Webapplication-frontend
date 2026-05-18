@@ -127,13 +127,7 @@ export default function MyRoom() {
                     <div className="page-title" style={{ background: 'linear-gradient(135deg,#6366f1,#0891b2)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>My Room</div>
                     <div className="page-desc">{profile?.roomNumber ? 'Your current room assignment.' : 'Pick an available room and book it.'}</div>
                 </div>
-                {profile?.roomNumber && (
-                    <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-                        onClick={() => { setSelected(''); setStep(1); setBookingModal(true); }}
-                        style={{ padding: '11px 22px', borderRadius: 12, border: '1px solid rgba(99,102,241,0.35)', background: 'rgba(99,102,241,0.07)', color: '#6366f1', fontSize: 14, fontWeight: 600, cursor: 'pointer', flexShrink: 0, marginTop: 4 }}>
-                        Change Room
-                    </motion.button>
-                )}
+
             </div>
 
             {success && (

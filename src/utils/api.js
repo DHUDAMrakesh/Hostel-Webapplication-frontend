@@ -16,9 +16,25 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
+// Connection monitoring system
+let isConnected = true;
+const listeners = new Set();
+const notify = (status) => {
+    if (isConnected !== status) {
+        isConnected = status;
+        listeners.forEach(l => l(status));
+    }
+};
+
+export const onConnectivityChange = (cb) => {
+    listeners.add(cb);
+    return () => listeners.delete(cb);
+};
+
 // Response interceptor: cache GETs + auto-retry once on network error
 api.interceptors.response.use(
     (response) => {
+        notify(true); // Successful response means we are connected
         if (response.config.method === 'get') {
             const key = response.config.url + (localStorage.getItem('hostel_token') || '');
             cache.set(key, { data: response.data, ts: Date.now() });
@@ -27,6 +43,19 @@ api.interceptors.response.use(
     },
     async (error) => {
         const cfg = error.config;
+        
+        // No response means network error / backend down
+        if (!error.response) {
+            notify(false);
+            // Auto-retry once on network error (no response received)
+            if (!cfg._retry) {
+                cfg._retry = true;
+                return api(cfg);
+            }
+        } else {
+            notify(true); // Received a response, so server is up (even if it's 4xx/5xx)
+        }
+
         // 401 → clear stale credentials
         if (error.response?.status === 401) {
             localStorage.removeItem('hostel_token');
@@ -34,11 +63,7 @@ api.interceptors.response.use(
             cache.clear();
             return Promise.reject(error);
         }
-        // Auto-retry once on network error (no response received)
-        if (!error.response && !cfg._retry) {
-            cfg._retry = true;
-            return api(cfg);
-        }
+
         return Promise.reject(error);
     }
 );

@@ -16,7 +16,13 @@ const inputSx = {
 const labelSx = { fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' };
 
 /* ─── Tabs ─── */
-const TABS = ['Invoices', 'Fee Plans', 'Reports'];
+const TABS = ['Invoices', 'Fee Plans', 'All Payments', 'Reports'];
+
+const PSTATUS_SX = {
+    Success: { bg: '#dcfce7', color: '#16a34a' },
+    Pending: { bg: '#fef9c3', color: '#ca8a04' },
+    Failed: { bg: '#fee2e2', color: '#dc2626' },
+};
 
 /* ─── Fee Plan Modal ─── */
 function FeePlanModal({ editData, onClose, onRefresh }) {
@@ -163,6 +169,8 @@ export default function FinanceAdmin() {
     const [invoices, setInvoices] = useState([]);
     const [students, setStudents] = useState([]);
     const [reports, setReports] = useState(null);
+    const [allPayments, setAllPayments] = useState([]);
+    const [adminReports, setAdminReports] = useState(null);
 
     // Modals
     const [modal, setModal] = useState(null);
@@ -170,16 +178,20 @@ export default function FinanceAdmin() {
 
     const loadData = async () => {
         try {
-            const [plansRes, invsRes, stuRes, repRes] = await Promise.all([
+            const [plansRes, invsRes, stuRes, repRes, paymentsRes, adminRepRes] = await Promise.all([
                 api.get('/finance/fee-plans'),
                 api.get('/finance/invoices'),
-                api.get('/students'), // light payload
+                api.get('/students'),
                 api.get('/finance/reports'),
+                api.get('/admin/payments/all'),
+                api.get('/admin/payments/reports'),
             ]);
             setFeePlans(plansRes.data);
             setInvoices(invsRes.data);
             setStudents(stuRes.data);
             setReports(repRes.data);
+            setAllPayments(paymentsRes.data);
+            setAdminReports(adminRepRes.data);
         } catch (e) {
             console.error(e);
         } finally {
@@ -303,16 +315,106 @@ export default function FinanceAdmin() {
                 </div>
             )}
 
+            {/* TAB: ALL PAYMENTS */}
+            {tab === 'All Payments' && (
+                <div style={{ background: 'var(--bg-surface)', borderRadius: 16, border: '1px solid var(--border-subtle)', overflow: 'hidden' }}>
+                    {allPayments.length === 0 ? (
+                        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>No payment transactions yet.</div>
+                    ) : (
+                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                            <thead>
+                                <tr style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)' }}>
+                                    {['Date', 'Student', 'Amount', 'Method', 'Txn ID', 'Status'].map(h => (
+                                        <th key={h} style={{ padding: '14px 18px', fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{h}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {allPayments.map((p, i) => {
+                                    const sc = PSTATUS_SX[p.paymentStatus] || PSTATUS_SX.Pending;
+                                    return (
+                                        <tr key={p._id} style={{ borderBottom: i < allPayments.length - 1 ? '1px solid var(--border-subtle)' : 'none' }}>
+                                            <td style={{ padding: '14px 18px', fontSize: 12, color: 'var(--text-muted)' }}>{new Date(p.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' })}</td>
+                                            <td style={{ padding: '14px 18px' }}>
+                                                <div style={{ fontSize: 13, fontWeight: 600 }}>{p.studentId?.name || 'Unknown'}</div>
+                                                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Room {p.studentId?.roomNumber || '—'}</div>
+                                            </td>
+                                            <td style={{ padding: '14px 18px', fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>₹{p.amount.toLocaleString('en-IN')}</td>
+                                            <td style={{ padding: '14px 18px', fontSize: 12 }}>{p.paymentMethod}</td>
+                                            <td style={{ padding: '14px 18px', fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>{p.transactionId?.slice(-14) || '—'}</td>
+                                            <td style={{ padding: '14px 18px' }}>
+                                                <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 99, background: sc.bg, color: sc.color }}>{p.paymentStatus}</span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+            )}
+
             {/* TAB: REPORTS */}
-            {tab === 'Reports' && reports && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-                    <div className="card" style={{ padding: 30, background: 'linear-gradient(135deg, rgba(16,185,129,0.1), transparent)' }}>
-                        <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Revenue Collected</div>
-                        <div style={{ fontSize: 40, fontWeight: 800, color: '#10b981', marginTop: 8 }}>₹{reports.totalCollected.toLocaleString('en-IN')}</div>
+            {tab === 'Reports' && adminReports && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                    {/* Top stats */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }}>
+                        {[
+                            { label: 'Total Revenue', value: `₹${(adminReports.totalRevenue || 0).toLocaleString('en-IN')}`, color: '#10b981', bg: 'rgba(16,185,129,0.08)', icon: '💰' },
+                            { label: 'Pending Dues', value: `₹${(adminReports.totalPending || 0).toLocaleString('en-IN')}`, color: '#ef4444', bg: 'rgba(239,68,68,0.08)', icon: '⚠' },
+                            { label: 'Open Invoices', value: adminReports.activeInvoices || 0, color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', icon: '📄' },
+                        ].map(s => (
+                            <div key={s.label} className="card" style={{ padding: 24, background: s.bg }}>
+                                <div style={{ fontSize: 24, marginBottom: 8 }}>{s.icon}</div>
+                                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{s.label}</div>
+                                <div style={{ fontSize: 32, fontWeight: 800, color: s.color, marginTop: 4 }}>{s.value}</div>
+                            </div>
+                        ))}
                     </div>
-                    <div className="card" style={{ padding: 30, background: 'linear-gradient(135deg, rgba(239,68,68,0.1), transparent)' }}>
-                        <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Outstanding Dues</div>
-                        <div style={{ fontSize: 40, fontWeight: 800, color: '#ef4444', marginTop: 8 }}>₹{reports.totalOutstanding.toLocaleString('en-IN')}</div>
+                    {/* Payment status counts */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }}>
+                        {[
+                            { label: 'Successful', count: adminReports.paymentCounts?.success || 0, color: '#16a34a' },
+                            { label: 'Pending', count: adminReports.paymentCounts?.pending || 0, color: '#ca8a04' },
+                            { label: 'Failed', count: adminReports.paymentCounts?.failed || 0, color: '#dc2626' },
+                        ].map(s => (
+                            <div key={s.label} className="card" style={{ padding: '18px 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)' }}>{s.label} Payments</div>
+                                <div style={{ fontSize: 28, fontWeight: 800, color: s.color }}>{s.count}</div>
+                            </div>
+                        ))}
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                        {/* Method breakdown */}
+                        {adminReports.methodRevenue?.length > 0 && (
+                            <div className="card" style={{ padding: 24 }}>
+                                <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 16 }}>Revenue by Method</div>
+                                {adminReports.methodRevenue.map(m => (
+                                    <div key={m._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border-subtle)' }}>
+                                        <span style={{ fontSize: 14, fontWeight: 600 }}>{m._id}</span>
+                                        <div style={{ textAlign: 'right' }}>
+                                            <div style={{ fontSize: 16, fontWeight: 800, color: '#10b981' }}>₹{m.total.toLocaleString('en-IN')}</div>
+                                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{m.count} txn{m.count !== 1 ? 's' : ''}</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        {/* Room-wise income */}
+                        {adminReports.hostelWise?.length > 0 && (
+                            <div className="card" style={{ padding: 24 }}>
+                                <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 16 }}>Room-wise Income</div>
+                                {adminReports.hostelWise.slice(0, 8).map(r => (
+                                    <div key={r._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border-subtle)' }}>
+                                        <span style={{ fontSize: 14, fontWeight: 600 }}>Room {r._id || 'Unassigned'}</span>
+                                        <div style={{ textAlign: 'right' }}>
+                                            <div style={{ fontSize: 16, fontWeight: 800, color: '#6366f1' }}>₹{r.totalCollected.toLocaleString('en-IN')}</div>
+                                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{r.count} payment{r.count !== 1 ? 's' : ''}</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

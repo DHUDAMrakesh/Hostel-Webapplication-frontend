@@ -1,16 +1,62 @@
-# React + Vite
+# Hostel Management System - Client
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This is the frontend application for the Hostel Management System, built with modern web technologies to provide a premium, responsive, and interactive user experience.
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Framework**: React 19 + Vite
+- **Styling**: Tailwind CSS 4, clsx, tailwind-merge
+- **Icons**: Lucide React
+- **Animations**: Framer Motion
+- **Routing**: React Router DOM
+- **Charts**: Recharts
+- **HTTP Client**: Axios
 
-## React Compiler
+## Getting Started
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Prerequisites
 
-## Expanding the ESLint configuration
+Ensure you have [Node.js](https://nodejs.org/) installed on your machine.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### Installation
+
+1. Navigate to the `client` directory:
+   ```bash
+   cd client
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+### Running the Development Server
+
+To start the application locally in development mode:
+
+```bash
+npm run dev
+```
+
+The application will be accessible at `http://localhost:5173` (or the port specified by Vite).
+
+### Building for Production
+
+To create an optimized production build:
+
+```bash
+npm run build
+```
+
+To preview the production build locally:
+
+```bash
+npm run preview
+```
+
+## Features
+
+- **Role-Based Interfaces**: Distinct dashboards and features tailored for Super Admins, Managers, and Students.
+- **Premium UI/UX**: Built with Tailwind CSS and enhanced with Framer Motion for smooth animations and transitions.
+- **Responsive Design**: Fully responsive layout that works seamlessly across desktop and mobile devices.
+- **Interactive Dashboards**: Data visualization using Recharts for quick insights and analytics.
