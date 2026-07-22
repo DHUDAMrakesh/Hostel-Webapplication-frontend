@@ -525,7 +525,17 @@ export default function App() {
             ) : <Navigate to={`/${user.role}/dashboard`} replace />
           } />
 
-          <Route path="/signup" element={<Navigate to="/login" replace />} />
+          <Route path="/signup" element={
+            !isAuthenticated ? (
+              <motion.div
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }} transition={{ duration: 0.25 }}
+                className="w-full h-full"
+              >
+                <Signup onSignup={handleSignup} onSwitchToLogin={() => navigate('/login')} />
+              </motion.div>
+            ) : <Navigate to={`/${user.role}/dashboard`} replace />
+          } />
           <Route path="/unauthorized" element={<Unauthorized />} />
 
           {/* ── Role-prefixed protected routes ── */}

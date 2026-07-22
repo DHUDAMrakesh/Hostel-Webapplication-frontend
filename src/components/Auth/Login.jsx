@@ -297,6 +297,27 @@ const Login = ({ onLogin, onSwitchToSignup }) => {
                                 </svg>
                                 Continue with Google
                             </motion.button>
+
+                            {/* Register Link */}
+                            <div style={{ textAlign: 'center', marginTop: 24 }}>
+                                <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', fontFamily: "'Inter', sans-serif" }}>
+                                    Don't have an account?{' '}
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={onSwitchToSignup}
+                                    style={{
+                                        background: 'none', border: 'none', cursor: 'pointer',
+                                        fontSize: 13, color: '#818cf8', fontWeight: 600,
+                                        fontFamily: "'Inter', sans-serif", padding: 0,
+                                        transition: 'color 0.2s'
+                                    }}
+                                    onMouseEnter={e => e.target.style.color = '#a5b4fc'}
+                                    onMouseLeave={e => e.target.style.color = '#818cf8'}
+                                >
+                                    Register
+                                </button>
+                            </div>
                         </motion.form>
                     ) : (
                         <motion.form
