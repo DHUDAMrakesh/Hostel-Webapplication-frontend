@@ -2,8 +2,10 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext(null);
 
-// Always point to the backend server directly (works with or without Vite proxy)
-const API = `${window.location.protocol}//${window.location.hostname}:5001/api/auth`;
+// Point to the backend server (uses env variable on Vercel, defaults to local 5001)
+const API = import.meta.env.VITE_API_URL 
+    ? `${import.meta.env.VITE_API_URL}/auth` 
+    : `${window.location.protocol}//${window.location.hostname}:5001/api/auth`;
 
 
 
